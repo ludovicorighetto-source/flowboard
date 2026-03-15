@@ -11,6 +11,9 @@ import { ADMIN_EMAIL } from "@/lib/utils/constants";
 
 export function AdminUsersTable() {
   const workspace = useWorkspaceData();
+  const userLabel = (workspace.currentUser?.full_name || workspace.currentUser?.email || "U")
+    .slice(0, 2)
+    .toUpperCase();
 
   if (workspace.loading) {
     return <LoadingSkeleton className="h-[420px] w-full" />;
@@ -32,6 +35,7 @@ export function AdminUsersTable() {
       <AppHeader
         title="Admin"
         description="Approva nuovi utenti o revoca l’accesso. Gli utenti non approvati restano bloccati sulla pagina di attesa."
+        userLabel={userLabel}
       />
 
       <div className="panel overflow-hidden">

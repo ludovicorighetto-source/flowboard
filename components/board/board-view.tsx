@@ -17,6 +17,9 @@ export function BoardView() {
   const workspace = useWorkspaceData();
   const [compact, setCompact] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const userLabel = (workspace.currentUser?.full_name || workspace.currentUser?.email || "U")
+    .slice(0, 2)
+    .toUpperCase();
 
   const tasksByList = useMemo(() => {
     return workspace.data.lists.reduce<Record<string, Task[]>>((acc, list) => {
@@ -83,6 +86,7 @@ export function BoardView() {
       <AppHeader
         title="Board"
         description="Gestisci task, priorita, checklist e assegnazioni in una kanban board pulita e veloce."
+        userLabel={userLabel}
         actions={
           <>
             <Button variant="secondary" onClick={() => setCompact((current) => !current)}>
@@ -106,7 +110,22 @@ export function BoardView() {
         />
       ) : (
         <DragDropContext onDragEnd={onDragEnd}>
-          <div className="subtle-scrollbar flex gap-4 overflow-x-auto pb-4">
+          <div className="flex flex-col gap-4 lg:hidden">
+            {workspace.data.lists.map((list) => (
+              <BoardListColumn
+                key={list.id}
+                list={list}
+                tasks={tasksByList[list.id] || []}
+                compact={false}
+                mobile
+                onTaskClick={(task) => setSelectedTask(task)}
+                onRenameList={(listId, title) => workspace.updateList(listId, { title })}
+                onDeleteList={workspace.deleteList}
+                onCreateTask={workspace.createTask}
+              />
+            ))}
+          </div>
+          <div className="subtle-scrollbar hidden gap-4 overflow-x-auto pb-4 lg:flex">
             {workspace.data.lists.map((list) => (
               <BoardListColumn
                 key={list.id}

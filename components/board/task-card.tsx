@@ -24,7 +24,7 @@ export function TaskCard({
     <button
       type="button"
       onClick={onClick}
-      className="focus-ring panel w-full space-y-3 p-4 text-left transition hover:-translate-y-0.5 hover:shadow-soft"
+      className="focus-ring panel w-full space-y-3 px-4 py-3 text-left transition hover:-translate-y-0.5 hover:shadow-soft lg:p-4"
     >
       <div className="flex items-start justify-between gap-3">
         <p className="line-clamp-2 text-sm font-semibold leading-6 text-ink">{task.title}</p>
@@ -60,7 +60,7 @@ export function TaskCard({
         </div>
       </div>
 
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
         {task.due_date ? (
           <span className="text-xs font-medium text-muted">
             Scade il {format(parseISO(task.due_date), "dd/MM")}

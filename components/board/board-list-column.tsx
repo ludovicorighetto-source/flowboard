@@ -1,7 +1,7 @@
 "use client";
 
 import { Droppable, Draggable } from "@hello-pangea/dnd";
-import { MoreHorizontal, Plus, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronUp, MoreHorizontal, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 import { TaskCard } from "@/components/board/task-card";
@@ -16,7 +16,8 @@ export function BoardListColumn({
   onTaskClick,
   onRenameList,
   onDeleteList,
-  onCreateTask
+  onCreateTask,
+  mobile = false
 }: {
   list: List;
   tasks: Task[];
@@ -25,21 +26,41 @@ export function BoardListColumn({
   onRenameList: (listId: string, title: string) => Promise<void>;
   onDeleteList: (listId: string) => Promise<void>;
   onCreateTask: (listId: string, title: string) => Promise<void>;
+  mobile?: boolean;
 }) {
   const [title, setTitle] = useState(list.title);
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [showComposer, setShowComposer] = useState(false);
+  const [expanded, setExpanded] = useState(true);
 
   return (
-    <div className={`panel flex h-full flex-col ${compact ? "w-[280px]" : "w-[340px]"} p-3`}>
+    <div
+      className={`panel flex h-full flex-col ${
+        mobile ? "w-full" : compact ? "w-[280px]" : "w-[340px]"
+      } p-3`}
+    >
       <div className="mb-3 flex items-center gap-2">
         <Input
           value={title}
           onChange={(event) => setTitle(event.target.value)}
           onBlur={() => onRenameList(list.id, title)}
-          className="border-0 bg-transparent px-1 text-base font-semibold"
+          className="min-h-12 border-0 bg-transparent px-1 text-base font-semibold"
         />
+        {mobile ? (
+          <span className="rounded-full bg-black/[0.04] px-3 py-1 text-xs font-semibold text-muted">
+            {tasks.length}
+          </span>
+        ) : null}
         <div className="flex items-center gap-1">
+          {mobile ? (
+            <Button
+              variant="ghost"
+              className="min-h-12 min-w-12"
+              onClick={() => setExpanded((current) => !current)}
+            >
+              {expanded ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+            </Button>
+          ) : null}
           <Button variant="ghost" onClick={() => setShowComposer((current) => !current)}>
             <Plus className="h-4 w-4" />
           </Button>
@@ -82,7 +103,9 @@ export function BoardListColumn({
           <div
             ref={provided.innerRef}
             {...provided.droppableProps}
-            className="subtle-scrollbar flex min-h-[240px] flex-1 flex-col gap-3 overflow-y-auto pr-1"
+            className={`subtle-scrollbar flex min-h-[160px] flex-1 flex-col gap-3 ${
+              mobile ? "overflow-visible pr-0" : "overflow-y-auto pr-1"
+            } ${mobile && !expanded ? "hidden" : ""}`}
           >
             {tasks.map((task, index) => (
               <Draggable key={task.id} draggableId={task.id} index={index}>

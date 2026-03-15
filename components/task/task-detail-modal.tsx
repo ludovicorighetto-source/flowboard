@@ -113,7 +113,13 @@ export function TaskDetailModal({
 
   return (
     <>
-      <Modal open={open} onClose={onClose} title="Dettaglio task" className="max-w-6xl">
+      <Modal
+        open={open}
+        onClose={onClose}
+        title="Dettaglio task"
+        className="max-w-6xl"
+        mobileSheet
+      >
         <div className="grid gap-0 lg:grid-cols-[1.35fr_0.8fr]">
           <div className="space-y-6 border-b border-black/[0.06] p-5 lg:border-b-0 lg:border-r">
             <div className="space-y-3">
@@ -194,6 +200,7 @@ export function TaskDetailModal({
                 />
                 <Button
                   variant="secondary"
+                  className="w-full md:w-auto"
                   onClick={async () => {
                     if (!linkName.trim() || !linkUrl.trim()) return;
                     await actions.addAttachmentLink(task.id, linkName.trim(), linkUrl.trim());
@@ -205,7 +212,7 @@ export function TaskDetailModal({
                 </Button>
               </div>
               <div className="flex flex-wrap items-center gap-3">
-                <label className="inline-flex cursor-pointer items-center gap-2 rounded-control border border-black/[0.08] bg-white px-3 py-2 text-sm font-medium text-ink">
+                <label className="inline-flex min-h-12 w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-black/[0.08] bg-white px-4 py-3 text-sm font-medium text-ink md:w-auto">
                   <span>Carica file</span>
                   <input
                     type="file"
@@ -223,7 +230,7 @@ export function TaskDetailModal({
                 {task.task_attachments.map((attachment) => (
                   <div
                     key={attachment.id}
-                    className="flex items-center justify-between rounded-control border border-black/[0.06] bg-white px-3 py-2"
+                    className="flex flex-col gap-2 rounded-xl border border-black/[0.06] bg-white px-3 py-3 sm:flex-row sm:items-center sm:justify-between"
                   >
                     <a
                       href={attachment.url}
@@ -235,6 +242,7 @@ export function TaskDetailModal({
                     </a>
                     <Button
                       variant="ghost"
+                      className="w-full sm:w-auto"
                       onClick={() => actions.deleteAttachment(attachment.id, attachment.url)}
                     >
                       Elimina
@@ -316,7 +324,7 @@ export function TaskDetailModal({
                   <button
                     key={value}
                     type="button"
-                    className={`rounded-control border px-3 py-2 text-left text-sm font-medium ${
+                    className={`min-h-12 rounded-xl border px-4 py-3 text-left text-sm font-medium ${
                       task.priority === value
                         ? meta.className
                         : "border-black/[0.08] bg-white text-muted"

@@ -18,6 +18,9 @@ export function RoadmapView() {
   const [createOpen, setCreateOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [color, setColor] = useState("#0071e3");
+  const userLabel = (workspace.currentUser?.full_name || workspace.currentUser?.email || "U")
+    .slice(0, 2)
+    .toUpperCase();
 
   if (workspace.loading) {
     return <LoadingSkeleton className="h-[520px] w-full" />;
@@ -39,6 +42,7 @@ export function RoadmapView() {
       <AppHeader
         title="Roadmap"
         description="Organizza il lavoro per fasi e goal, collegando i task operativi agli obiettivi di medio periodo."
+        userLabel={userLabel}
         actions={
           <>
             <Button variant="secondary" onClick={() => setOverview((current) => !current)}>
@@ -61,26 +65,49 @@ export function RoadmapView() {
           onAction={() => setCreateOpen(true)}
         />
       ) : (
-        <div className="subtle-scrollbar flex gap-4 overflow-x-auto pb-4">
-          {workspace.data.phases.map((phase, index) => (
-            <div key={phase.id} className="flex items-stretch gap-4">
-              <RoadmapPhaseColumn
-                phase={phase}
-                overview={overview}
-                tasks={workspace.data.tasks}
-                onUpdatePhase={workspace.updatePhase}
-                onDeletePhase={workspace.deletePhase}
-                onCreateGoal={workspace.createGoal}
-                onUpdateGoal={workspace.updateGoal}
-                onDeleteGoal={workspace.deleteGoal}
-                onSetGoalTasks={workspace.setGoalTasks}
-              />
-              {index < workspace.data.phases.length - 1 ? (
-                <div className="hidden items-center text-3xl text-black/12 lg:flex">→</div>
-              ) : null}
-            </div>
-          ))}
-        </div>
+        <>
+          <div className="space-y-4 lg:hidden">
+            {workspace.data.phases.map((phase, index) => (
+              <div key={phase.id} className="space-y-2">
+                <RoadmapPhaseColumn
+                  phase={phase}
+                  overview={false}
+                  mobile
+                  tasks={workspace.data.tasks}
+                  onUpdatePhase={workspace.updatePhase}
+                  onDeletePhase={workspace.deletePhase}
+                  onCreateGoal={workspace.createGoal}
+                  onUpdateGoal={workspace.updateGoal}
+                  onDeleteGoal={workspace.deleteGoal}
+                  onSetGoalTasks={workspace.setGoalTasks}
+                />
+                {index < workspace.data.phases.length - 1 ? (
+                  <div className="flex justify-center text-xl text-black/20">↓</div>
+                ) : null}
+              </div>
+            ))}
+          </div>
+          <div className="subtle-scrollbar hidden gap-4 overflow-x-auto pb-4 lg:flex">
+            {workspace.data.phases.map((phase, index) => (
+              <div key={phase.id} className="flex items-stretch gap-4">
+                <RoadmapPhaseColumn
+                  phase={phase}
+                  overview={overview}
+                  tasks={workspace.data.tasks}
+                  onUpdatePhase={workspace.updatePhase}
+                  onDeletePhase={workspace.deletePhase}
+                  onCreateGoal={workspace.createGoal}
+                  onUpdateGoal={workspace.updateGoal}
+                  onDeleteGoal={workspace.deleteGoal}
+                  onSetGoalTasks={workspace.setGoalTasks}
+                />
+                {index < workspace.data.phases.length - 1 ? (
+                  <div className="hidden items-center text-3xl text-black/12 lg:flex">→</div>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        </>
       )}
 
       <Modal open={createOpen} onClose={() => setCreateOpen(false)} title="Nuova fase" className="max-w-md">

@@ -6,6 +6,7 @@ import { useMemo, useState } from "react";
 import { AppHeader } from "@/components/layout/app-header";
 import { PlannerCalendar } from "@/components/planner/planner-calendar";
 import { DueSoonPanel } from "@/components/planner/due-soon-panel";
+import { PlannerMobileList } from "@/components/planner/planner-mobile-list";
 import { TaskDetailModal } from "@/components/task/task-detail-modal";
 import { EmptyState } from "@/components/ui/empty-state";
 import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
@@ -16,6 +17,9 @@ export function PlannerView() {
   const workspace = useWorkspaceData();
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const userLabel = (workspace.currentUser?.full_name || workspace.currentUser?.email || "U")
+    .slice(0, 2)
+    .toUpperCase();
 
   const plannedTasks = useMemo(
     () => workspace.data.tasks.filter((task) => task.start_date && task.due_date),
@@ -54,9 +58,25 @@ export function PlannerView() {
       <AppHeader
         title="Planner"
         description="Monitora task multi-day nel calendario e tieni sotto controllo le prossime scadenze."
+        userLabel={userLabel}
       />
 
-      <div className="grid gap-6 xl:grid-cols-[1.35fr_0.65fr]">
+      <div className="space-y-4 lg:hidden">
+        <DueSoonPanel tasks={dueSoonTasks} onTaskClick={setSelectedTask} />
+        <PlannerMobileList
+          currentMonth={currentMonth}
+          tasks={plannedTasks}
+          onPrevMonth={() =>
+            setCurrentMonth((date) => new Date(date.getFullYear(), date.getMonth() - 1, 1))
+          }
+          onNextMonth={() =>
+            setCurrentMonth((date) => new Date(date.getFullYear(), date.getMonth() + 1, 1))
+          }
+          onTaskClick={setSelectedTask}
+        />
+      </div>
+
+      <div className="hidden gap-6 xl:grid xl:grid-cols-[1.35fr_0.65fr]">
         <PlannerCalendar
           currentMonth={currentMonth}
           tasks={plannedTasks}

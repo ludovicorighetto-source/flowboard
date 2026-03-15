@@ -10,13 +10,15 @@ export function Modal({
   onClose,
   title,
   children,
-  className
+  className,
+  mobileSheet = false
 }: {
   open: boolean;
   onClose: () => void;
   title?: string;
   children: React.ReactNode;
   className?: string;
+  mobileSheet?: boolean;
 }) {
   useEffect(() => {
     if (!open) return;
@@ -33,7 +35,12 @@ export function Modal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 px-4 py-6 backdrop-blur-sm"
+      className={cn(
+        "fixed inset-0 z-50 flex bg-black/20 backdrop-blur-sm",
+        mobileSheet
+          ? "items-end justify-center px-0 py-0 lg:items-center lg:px-4 lg:py-6"
+          : "items-center justify-center px-4 py-6"
+      )}
       role="dialog"
       aria-modal="true"
     >
@@ -44,7 +51,10 @@ export function Modal({
       />
       <div
         className={cn(
-          "panel subtle-scrollbar relative z-10 max-h-[90vh] w-full overflow-y-auto",
+          "panel subtle-scrollbar relative z-10 w-full overflow-y-auto",
+          mobileSheet
+            ? "max-h-[90vh] rounded-b-none border-b-0 lg:max-h-[90vh] lg:rounded-panel lg:border-b"
+            : "max-h-[90vh]",
           className
         )}
       >

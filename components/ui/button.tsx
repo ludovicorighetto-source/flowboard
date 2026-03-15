@@ -18,7 +18,7 @@ export function Button({
     <button
       type={type}
       className={cn(
-        "focus-ring inline-flex h-10 items-center justify-center rounded-control border px-4 text-sm font-medium transition",
+        "focus-ring inline-flex min-h-12 items-center justify-center rounded-xl border px-4 py-3 text-sm font-medium transition",
         variant === "primary" &&
           "border-action bg-action text-white hover:bg-[#0060bf]",
         variant === "secondary" &&

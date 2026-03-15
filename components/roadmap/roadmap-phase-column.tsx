@@ -1,6 +1,6 @@
 "use client";
 
-import { Plus, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronUp, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 import { RoadmapGoalCard } from "@/components/roadmap/roadmap-goal-card";
@@ -18,7 +18,8 @@ export function RoadmapPhaseColumn({
   onCreateGoal,
   onUpdateGoal,
   onDeleteGoal,
-  onSetGoalTasks
+  onSetGoalTasks,
+  mobile = false
 }: {
   phase: RoadmapPhase;
   overview: boolean;
@@ -35,11 +36,17 @@ export function RoadmapPhaseColumn({
   ) => Promise<void>;
   onDeleteGoal: (goalId: string) => Promise<void>;
   onSetGoalTasks: (goalId: string, taskIds: string[]) => Promise<void>;
+  mobile?: boolean;
 }) {
   const [newGoalTitle, setNewGoalTitle] = useState("");
+  const [expanded, setExpanded] = useState(true);
 
   return (
-    <div className={`panel shrink-0 ${overview ? "w-[280px]" : "w-[360px]"} p-4`}>
+    <div
+      className={`panel ${mobile ? "w-full" : "shrink-0"} ${
+        mobile ? "" : overview ? "w-[280px]" : "w-[360px]"
+      } p-4`}
+    >
       <div className="mb-4 space-y-3">
         <div className="flex items-center justify-between gap-3">
           <Input
@@ -50,8 +57,13 @@ export function RoadmapPhaseColumn({
           <Button variant="ghost" onClick={() => onDeletePhase(phase.id)}>
             <Trash2 className="h-4 w-4" />
           </Button>
+          {mobile ? (
+            <Button variant="ghost" onClick={() => setExpanded((current) => !current)}>
+              {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            </Button>
+          ) : null}
         </div>
-        {!overview ? (
+        {!overview && (!mobile || expanded) ? (
           <>
             <Textarea
               defaultValue={phase.description || ""}
@@ -73,35 +85,39 @@ export function RoadmapPhaseColumn({
         ) : null}
       </div>
 
-      <div className="mb-4 flex items-center gap-2">
-        <Input
-          placeholder="Nuovo goal"
-          value={newGoalTitle}
-          onChange={(event) => setNewGoalTitle(event.target.value)}
-        />
-        <Button
-          onClick={async () => {
-            if (!newGoalTitle.trim()) return;
-            await onCreateGoal(phase.id, newGoalTitle.trim());
-            setNewGoalTitle("");
-          }}
-        >
-          <Plus className="h-4 w-4" />
-        </Button>
-      </div>
+      {!mobile || expanded ? (
+        <>
+          <div className="mb-4 flex items-center gap-2">
+            <Input
+              placeholder="Nuovo goal"
+              value={newGoalTitle}
+              onChange={(event) => setNewGoalTitle(event.target.value)}
+            />
+            <Button
+              onClick={async () => {
+                if (!newGoalTitle.trim()) return;
+                await onCreateGoal(phase.id, newGoalTitle.trim());
+                setNewGoalTitle("");
+              }}
+            >
+              <Plus className="h-4 w-4" />
+            </Button>
+          </div>
 
-      <div className="space-y-3">
-        {(phase.roadmap_goals || []).map((goal) => (
-          <RoadmapGoalCard
-            key={goal.id}
-            goal={goal}
-            allTasks={tasks}
-            onUpdate={onUpdateGoal}
-            onDelete={onDeleteGoal}
-            onSetTasks={onSetGoalTasks}
-          />
-        ))}
-      </div>
+          <div className="space-y-3">
+            {(phase.roadmap_goals || []).map((goal) => (
+              <RoadmapGoalCard
+                key={goal.id}
+                goal={goal}
+                allTasks={tasks}
+                onUpdate={onUpdateGoal}
+                onDelete={onDeleteGoal}
+                onSetTasks={onSetGoalTasks}
+              />
+            ))}
+          </div>
+        </>
+      ) : null}
     </div>
   );
 }

@@ -34,7 +34,7 @@ export function DueSoonPanel({
                 key={task.id}
                 type="button"
                 onClick={() => onTaskClick(task)}
-                className={`w-full rounded-panel border px-4 py-3 text-left transition hover:shadow-soft ${
+                className={`min-h-12 w-full rounded-panel border px-4 py-3 text-left transition hover:shadow-soft ${
                   overdue
                     ? "border-rose-200 bg-rose-50"
                     : "border-black/[0.06] bg-white"
