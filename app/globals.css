@@ -1,0 +1,62 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --page-bg: #f5f5f7;
+  --card-bg: #ffffff;
+  --ink: #1d1d1f;
+  --muted: #6e6e73;
+  --action: #0071e3;
+  --line: #e4e4e7;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text",
+    "SF Pro Display", sans-serif;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: radial-gradient(circle at top, #ffffff 0%, #f5f5f7 42%, #f3f3f5 100%);
+  color: var(--ink);
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+::selection {
+  background: rgba(0, 113, 227, 0.16);
+}
+
+.focus-ring {
+  @apply focus:outline-none focus:ring-2 focus:ring-action/25 focus:ring-offset-2 focus:ring-offset-white;
+}
+
+.panel {
+  @apply rounded-panel border border-black/[0.06] bg-card shadow-card;
+}
+
+.subtle-scrollbar::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.subtle-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(29, 29, 31, 0.12);
+  border-radius: 999px;
+}
