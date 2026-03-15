@@ -7,6 +7,7 @@ import { useState } from "react";
 import { TaskCard } from "@/components/board/task-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { getListColorClass } from "@/lib/utils/constants";
 import type { List, Task } from "@/types";
 
 export function BoardListColumn({
@@ -32,6 +33,7 @@ export function BoardListColumn({
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [showComposer, setShowComposer] = useState(false);
   const [expanded, setExpanded] = useState(true);
+  const listColorClass = getListColorClass(list.title, list.position);
 
   return (
     <div
@@ -118,6 +120,7 @@ export function BoardListColumn({
                     <TaskCard
                       task={task}
                       compact={compact}
+                      listColorClass={listColorClass}
                       onClick={() => onTaskClick(task)}
                     />
                   </div>

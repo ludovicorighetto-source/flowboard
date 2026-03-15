@@ -32,3 +32,34 @@ export const PRIORITY_META = {
     className: "bg-sky-50 text-sky-700 border-sky-200"
   }
 } as const;
+
+export const LIST_COLOR_CLASSES = [
+  "bg-gray-400",
+  "bg-blue-500",
+  "bg-orange-500",
+  "bg-green-500",
+  "bg-purple-500",
+  "bg-cyan-500"
+] as const;
+
+export function getListColorClass(listTitle: string, position: number) {
+  const normalized = listTitle.trim().toLowerCase();
+
+  if (normalized.includes("todo") || normalized.includes("to do")) {
+    return "bg-gray-400";
+  }
+
+  if (normalized.includes("doing") || normalized.includes("in progress")) {
+    return "bg-blue-500";
+  }
+
+  if (normalized.includes("review")) {
+    return "bg-orange-500";
+  }
+
+  if (normalized.includes("done")) {
+    return "bg-green-500";
+  }
+
+  return LIST_COLOR_CLASSES[position % LIST_COLOR_CLASSES.length];
+}
