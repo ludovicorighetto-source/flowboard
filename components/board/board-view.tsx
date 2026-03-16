@@ -2,7 +2,7 @@
 
 import { DragDropContext, type DropResult } from "@hello-pangea/dnd";
 import { LayoutGrid, Plus } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { BoardListColumn } from "@/components/board/board-list-column";
 import { AppHeader } from "@/components/layout/app-header";
@@ -15,8 +15,9 @@ import type { Task } from "@/types";
 
 export function BoardView() {
   const workspace = useWorkspaceData();
-  const [compact, setCompact] = useState(false);
+  const [overview, setOverview] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [focusListId, setFocusListId] = useState<string | null>(null);
   const userLabel = (workspace.currentUser?.full_name || workspace.currentUser?.email || "U")
     .slice(0, 2)
     .toUpperCase();
@@ -29,6 +30,12 @@ export function BoardView() {
       return acc;
     }, {});
   }, [workspace.data.lists, workspace.data.tasks]);
+
+  useEffect(() => {
+    if (!focusListId) return;
+    const timer = window.setTimeout(() => setFocusListId(null), 700);
+    return () => window.clearTimeout(timer);
+  }, [focusListId]);
 
   async function onDragEnd(result: DropResult) {
     const { source, destination, draggableId } = result;
@@ -89,11 +96,16 @@ export function BoardView() {
         userLabel={userLabel}
         actions={
           <>
-            <Button variant="secondary" onClick={() => setCompact((current) => !current)}>
+            <Button variant={overview ? "primary" : "secondary"} onClick={() => setOverview((current) => !current)}>
               <LayoutGrid className="mr-2 h-4 w-4" />
-              {compact ? "Vista standard" : "Vista totale"}
+              {overview ? "Overview attiva" : "Vista totale"}
             </Button>
-            <Button onClick={() => void workspace.createList(`Nuova lista ${workspace.data.lists.length + 1}`)}>
+            <Button
+              onClick={async () => {
+                const newListId = await workspace.createList("Nuova lista");
+                if (newListId) setFocusListId(newListId);
+              }}
+            >
               <Plus className="mr-2 h-4 w-4" />
               Nuova lista
             </Button>
@@ -101,37 +113,32 @@ export function BoardView() {
         }
       />
 
+      {overview ? (
+        <div className="mb-4 rounded-xl border border-action/25 bg-[#eef4ff] px-4 py-3 text-sm font-medium text-action">
+          Overview mode attiva: colonne e card compatte per vedere piu liste insieme.
+        </div>
+      ) : null}
+
       {workspace.data.lists.length === 0 ? (
         <EmptyState
           title="La board e vuota"
           description="Crea la prima lista per iniziare a organizzare lavoro, roadmap e scadenze."
           actionLabel="Crea prima lista"
-          onAction={() => void workspace.createList("To do")}
+          onAction={async () => {
+            const newListId = await workspace.createList("To do");
+            if (newListId) setFocusListId(newListId);
+          }}
         />
       ) : (
         <DragDropContext onDragEnd={onDragEnd}>
-          <div className="flex flex-col gap-4 lg:hidden">
+          <div className="subtle-scrollbar flex gap-3 overflow-x-auto pb-4">
             {workspace.data.lists.map((list) => (
               <BoardListColumn
                 key={list.id}
                 list={list}
                 tasks={tasksByList[list.id] || []}
-                compact={false}
-                mobile
-                onTaskClick={(task) => setSelectedTask(task)}
-                onRenameList={(listId, title) => workspace.updateList(listId, { title })}
-                onDeleteList={workspace.deleteList}
-                onCreateTask={workspace.createTask}
-              />
-            ))}
-          </div>
-          <div className="subtle-scrollbar hidden gap-4 overflow-x-auto pb-4 lg:flex">
-            {workspace.data.lists.map((list) => (
-              <BoardListColumn
-                key={list.id}
-                list={list}
-                tasks={tasksByList[list.id] || []}
-                compact={compact}
+                compact={overview}
+                shouldFocusTitle={focusListId === list.id}
                 onTaskClick={(task) => setSelectedTask(task)}
                 onRenameList={(listId, title) => workspace.updateList(listId, { title })}
                 onDeleteList={workspace.deleteList}

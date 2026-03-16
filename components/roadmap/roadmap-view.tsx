@@ -45,9 +45,9 @@ export function RoadmapView() {
         userLabel={userLabel}
         actions={
           <>
-            <Button variant="secondary" onClick={() => setOverview((current) => !current)}>
+            <Button variant={overview ? "primary" : "secondary"} onClick={() => setOverview((current) => !current)}>
               <LayoutGrid className="mr-2 h-4 w-4" />
-              {overview ? "Vista dettagliata" : "Vista overview"}
+              {overview ? "Overview attiva" : "Vista overview"}
             </Button>
             <Button onClick={() => setCreateOpen(true)}>
               <Plus className="mr-2 h-4 w-4" />
@@ -57,6 +57,12 @@ export function RoadmapView() {
         }
       />
 
+      {overview ? (
+        <div className="mb-4 rounded-xl border border-action/25 bg-[#eef4ff] px-4 py-3 text-sm font-medium text-action">
+          Overview mode attiva: roadmap compatta con riepilogo rapido di fasi e goal.
+        </div>
+      ) : null}
+
       {workspace.data.phases.length === 0 ? (
         <EmptyState
           title="Nessuna fase nella roadmap"
@@ -65,49 +71,26 @@ export function RoadmapView() {
           onAction={() => setCreateOpen(true)}
         />
       ) : (
-        <>
-          <div className="space-y-4 lg:hidden">
-            {workspace.data.phases.map((phase, index) => (
-              <div key={phase.id} className="space-y-2">
-                <RoadmapPhaseColumn
-                  phase={phase}
-                  overview={false}
-                  mobile
-                  tasks={workspace.data.tasks}
-                  onUpdatePhase={workspace.updatePhase}
-                  onDeletePhase={workspace.deletePhase}
-                  onCreateGoal={workspace.createGoal}
-                  onUpdateGoal={workspace.updateGoal}
-                  onDeleteGoal={workspace.deleteGoal}
-                  onSetGoalTasks={workspace.setGoalTasks}
-                />
-                {index < workspace.data.phases.length - 1 ? (
-                  <div className="flex justify-center text-xl text-black/20">↓</div>
-                ) : null}
-              </div>
-            ))}
-          </div>
-          <div className="subtle-scrollbar hidden gap-4 overflow-x-auto pb-4 lg:flex">
-            {workspace.data.phases.map((phase, index) => (
-              <div key={phase.id} className="flex items-stretch gap-4">
-                <RoadmapPhaseColumn
-                  phase={phase}
-                  overview={overview}
-                  tasks={workspace.data.tasks}
-                  onUpdatePhase={workspace.updatePhase}
-                  onDeletePhase={workspace.deletePhase}
-                  onCreateGoal={workspace.createGoal}
-                  onUpdateGoal={workspace.updateGoal}
-                  onDeleteGoal={workspace.deleteGoal}
-                  onSetGoalTasks={workspace.setGoalTasks}
-                />
-                {index < workspace.data.phases.length - 1 ? (
-                  <div className="hidden items-center text-3xl text-black/12 lg:flex">→</div>
-                ) : null}
-              </div>
-            ))}
-          </div>
-        </>
+        <div className="subtle-scrollbar flex gap-4 overflow-x-auto pb-4">
+          {workspace.data.phases.map((phase, index) => (
+            <div key={phase.id} className="flex items-stretch gap-4">
+              <RoadmapPhaseColumn
+                phase={phase}
+                overview={overview}
+                tasks={workspace.data.tasks}
+                onUpdatePhase={workspace.updatePhase}
+                onDeletePhase={workspace.deletePhase}
+                onCreateGoal={workspace.createGoal}
+                onUpdateGoal={workspace.updateGoal}
+                onDeleteGoal={workspace.deleteGoal}
+                onSetGoalTasks={workspace.setGoalTasks}
+              />
+              {index < workspace.data.phases.length - 1 ? (
+                <div className="flex items-center text-3xl text-black/12">→</div>
+              ) : null}
+            </div>
+          ))}
+        </div>
       )}
 
       <Modal open={createOpen} onClose={() => setCreateOpen(false)} title="Nuova fase" className="max-w-md">

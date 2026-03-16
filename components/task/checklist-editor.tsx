@@ -4,6 +4,7 @@ import { Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
 import type { Checklist } from "@/types";
 
@@ -29,6 +30,8 @@ export function ChecklistEditor({
 }) {
   const [newChecklist, setNewChecklist] = useState("");
   const [draftItems, setDraftItems] = useState<Record<string, string>>({});
+  const [deleteChecklistId, setDeleteChecklistId] = useState<string | null>(null);
+  const [deleteItemId, setDeleteItemId] = useState<string | null>(null);
 
   return (
     <div className="space-y-5">
@@ -57,7 +60,7 @@ export function ChecklistEditor({
               defaultValue={checklist.title}
               onBlur={(event) => onRenameChecklist(checklist.id, event.target.value)}
             />
-            <Button variant="ghost" onClick={() => onDeleteChecklist(checklist.id)}>
+            <Button variant="ghost" onClick={() => setDeleteChecklistId(checklist.id)}>
               <Trash2 className="h-4 w-4" />
             </Button>
           </div>
@@ -80,7 +83,7 @@ export function ChecklistEditor({
                 <button
                   type="button"
                   className="text-muted hover:text-rose-600"
-                  onClick={() => onDeleteItem(item.id)}
+                  onClick={() => setDeleteItemId(item.id)}
                 >
                   <Trash2 className="h-4 w-4" />
                 </button>
@@ -113,6 +116,32 @@ export function ChecklistEditor({
           </div>
         </div>
       ))}
+
+      <ConfirmDialog
+        open={Boolean(deleteChecklistId)}
+        onClose={() => setDeleteChecklistId(null)}
+        title="Eliminare questa checklist?"
+        description="Verranno eliminati titolo e tutte le voci collegate."
+        confirmLabel="Elimina checklist"
+        onConfirm={async () => {
+          if (!deleteChecklistId) return;
+          await onDeleteChecklist(deleteChecklistId);
+          setDeleteChecklistId(null);
+        }}
+      />
+
+      <ConfirmDialog
+        open={Boolean(deleteItemId)}
+        onClose={() => setDeleteItemId(null)}
+        title="Eliminare questa voce?"
+        description="La voce checklist verra rimossa definitivamente."
+        confirmLabel="Elimina voce"
+        onConfirm={async () => {
+          if (!deleteItemId) return;
+          await onDeleteItem(deleteItemId);
+          setDeleteItemId(null);
+        }}
+      />
     </div>
   );
 }

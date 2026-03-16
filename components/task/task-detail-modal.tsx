@@ -66,6 +66,11 @@ export function TaskDetailModal({
   const [description, setDescription] = useState(task?.description || "");
   const [notes, setNotes] = useState(task?.notes || "");
   const [showDelete, setShowDelete] = useState(false);
+  const [attachmentToDelete, setAttachmentToDelete] = useState<{
+    id: string;
+    url: string;
+    name: string;
+  } | null>(null);
   const [linkName, setLinkName] = useState("");
   const [linkUrl, setLinkUrl] = useState("");
   const [phaseId, setPhaseId] = useState(task?.goal_tasks[0]?.goal?.phase_id || "");
@@ -243,7 +248,13 @@ export function TaskDetailModal({
                     <Button
                       variant="ghost"
                       className="w-full sm:w-auto"
-                      onClick={() => actions.deleteAttachment(attachment.id, attachment.url)}
+                      onClick={() =>
+                        setAttachmentToDelete({
+                          id: attachment.id,
+                          url: attachment.url,
+                          name: attachment.name
+                        })
+                      }
                     >
                       Elimina
                     </Button>
@@ -395,6 +406,23 @@ export function TaskDetailModal({
           await actions.deleteTask(task.id);
           setShowDelete(false);
           onClose();
+        }}
+      />
+
+      <ConfirmDialog
+        open={Boolean(attachmentToDelete)}
+        onClose={() => setAttachmentToDelete(null)}
+        title="Eliminare questo allegato?"
+        description={
+          attachmentToDelete
+            ? `L'allegato "${attachmentToDelete.name}" verra rimosso dal task.`
+            : "L'allegato verra rimosso dal task."
+        }
+        confirmLabel="Elimina allegato"
+        onConfirm={async () => {
+          if (!attachmentToDelete) return;
+          await actions.deleteAttachment(attachmentToDelete.id, attachmentToDelete.url);
+          setAttachmentToDelete(null);
         }}
       />
     </>

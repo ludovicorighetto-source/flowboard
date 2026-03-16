@@ -1,10 +1,11 @@
 "use client";
 
-import { ChevronDown, ChevronUp, Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 import { RoadmapGoalCard } from "@/components/roadmap/roadmap-goal-card";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import type { RoadmapPhase, Task } from "@/types";
@@ -18,8 +19,7 @@ export function RoadmapPhaseColumn({
   onCreateGoal,
   onUpdateGoal,
   onDeleteGoal,
-  onSetGoalTasks,
-  mobile = false
+  onSetGoalTasks
 }: {
   phase: RoadmapPhase;
   overview: boolean;
@@ -36,57 +36,51 @@ export function RoadmapPhaseColumn({
   ) => Promise<void>;
   onDeleteGoal: (goalId: string) => Promise<void>;
   onSetGoalTasks: (goalId: string, taskIds: string[]) => Promise<void>;
-  mobile?: boolean;
 }) {
   const [newGoalTitle, setNewGoalTitle] = useState("");
-  const [expanded, setExpanded] = useState(true);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   return (
-    <div
-      className={`panel ${mobile ? "w-full" : "shrink-0"} ${
-        mobile ? "" : overview ? "w-[280px]" : "w-[360px]"
-      } p-4`}
-    >
-      <div className="mb-4 space-y-3">
-        <div className="flex items-center justify-between gap-3">
-          <Input
-            defaultValue={phase.title}
-            onBlur={(event) => onUpdatePhase(phase.id, { title: event.target.value })}
-            className="border-0 bg-transparent px-0 text-lg font-semibold"
-          />
-          <Button variant="ghost" onClick={() => onDeletePhase(phase.id)}>
-            <Trash2 className="h-4 w-4" />
-          </Button>
-          {mobile ? (
-            <Button variant="ghost" onClick={() => setExpanded((current) => !current)}>
-              {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-            </Button>
-          ) : null}
-        </div>
-        {!overview && (!mobile || expanded) ? (
-          <>
-            <Textarea
-              defaultValue={phase.description || ""}
-              onBlur={(event) =>
-                onUpdatePhase(phase.id, { description: event.target.value || null })
-              }
-              className="min-h-[90px]"
+    <>
+      <div className={`panel shrink-0 ${overview ? "w-[240px]" : "w-[360px]"} p-4`}>
+        <div className="mb-4 space-y-3">
+          <div className="flex items-center justify-between gap-3">
+            <Input
+              defaultValue={phase.title}
+              onBlur={(event) => onUpdatePhase(phase.id, { title: event.target.value })}
+              className={`border-0 bg-transparent px-0 font-semibold ${overview ? "text-base" : "text-lg"}`}
             />
-            <label className="block space-y-2">
-              <span className="text-sm font-medium text-ink">Colore fase</span>
-              <input
-                type="color"
-                defaultValue={phase.color}
-                onChange={(event) => onUpdatePhase(phase.id, { color: event.target.value })}
-                className="h-11 w-full rounded-control border border-black/[0.08] bg-white p-1"
+            <Button variant="ghost" onClick={() => setShowDeleteConfirm(true)}>
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+          {!overview ? (
+            <>
+              <Textarea
+                defaultValue={phase.description || ""}
+                onBlur={(event) =>
+                  onUpdatePhase(phase.id, { description: event.target.value || null })
+                }
+                className="min-h-[90px]"
               />
-            </label>
-          </>
-        ) : null}
-      </div>
+              <label className="block space-y-2">
+                <span className="text-sm font-medium text-ink">Colore fase</span>
+                <input
+                  type="color"
+                  defaultValue={phase.color}
+                  onChange={(event) => onUpdatePhase(phase.id, { color: event.target.value })}
+                  className="h-11 w-full rounded-control border border-black/[0.08] bg-white p-1"
+                />
+              </label>
+            </>
+          ) : (
+            <p className="line-clamp-2 text-xs leading-5 text-muted">
+              {phase.description || "Nessuna descrizione"}
+            </p>
+          )}
+        </div>
 
-      {!mobile || expanded ? (
-        <>
+        {!overview ? (
           <div className="mb-4 flex items-center gap-2">
             <Input
               placeholder="Nuovo goal"
@@ -103,21 +97,34 @@ export function RoadmapPhaseColumn({
               <Plus className="h-4 w-4" />
             </Button>
           </div>
+        ) : null}
 
-          <div className="space-y-3">
-            {(phase.roadmap_goals || []).map((goal) => (
-              <RoadmapGoalCard
-                key={goal.id}
-                goal={goal}
-                allTasks={tasks}
-                onUpdate={onUpdateGoal}
-                onDelete={onDeleteGoal}
-                onSetTasks={onSetGoalTasks}
-              />
-            ))}
-          </div>
-        </>
-      ) : null}
-    </div>
+        <div className="space-y-2">
+          {(phase.roadmap_goals || []).map((goal) => (
+            <RoadmapGoalCard
+              key={goal.id}
+              goal={goal}
+              allTasks={tasks}
+              overview={overview}
+              onUpdate={onUpdateGoal}
+              onDelete={onDeleteGoal}
+              onSetTasks={onSetGoalTasks}
+            />
+          ))}
+        </div>
+      </div>
+
+      <ConfirmDialog
+        open={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        title="Eliminare questa fase?"
+        description="La fase verra eliminata insieme ai goal collegati e ai relativi link ai task."
+        confirmLabel="Elimina fase"
+        onConfirm={async () => {
+          await onDeletePhase(phase.id);
+          setShowDeleteConfirm(false);
+        }}
+      />
+    </>
   );
 }

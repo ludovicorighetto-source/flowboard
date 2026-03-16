@@ -129,12 +129,17 @@ export function useWorkspaceData() {
 
   async function createList(title: string) {
     const supabase = createSupabaseBrowserClient();
-    await withRefresh(() =>
-      supabase.from("lists").insert({
+    const { data: inserted } = await supabase
+      .from("lists")
+      .insert({
         title,
         position: data.lists.length
       })
-    );
+      .select("id")
+      .single<{ id: string }>();
+
+    await loadData();
+    return inserted?.id || null;
   }
 
   async function updateList(id: string, patch: { title?: string; position?: number }) {
