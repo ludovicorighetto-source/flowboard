@@ -6,6 +6,8 @@ import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { STORAGE_BUCKET } from "@/lib/utils/constants";
 import type { BoardData, Label, Priority, Profile, RoadmapPhase, Task } from "@/types";
 
+const GOAL_COMPLETED_MARKER = "[[flowboard:goal_completed]]";
+
 const TASK_SELECT = `
   *,
   task_labels(label:labels(*)),
@@ -108,7 +110,18 @@ export function useWorkspaceData() {
       allUsers,
       phases: ((phasesResult.data || []) as RoadmapPhase[]).map((phase) => ({
         ...phase,
-        roadmap_goals: [...(phase.roadmap_goals || [])].sort((a, b) => a.position - b.position)
+        roadmap_goals: [...(phase.roadmap_goals || [])]
+          .sort((a, b) => a.position - b.position)
+          .map((goal) => ({
+            ...goal,
+            description: (goal.description || "")
+              .replace(GOAL_COMPLETED_MARKER, "")
+              .trim() || null,
+            is_completed:
+              typeof goal.is_completed === "boolean"
+                ? goal.is_completed
+                : (goal.description || "").includes(GOAL_COMPLETED_MARKER)
+          }))
       }))
     });
 
@@ -126,6 +139,12 @@ export function useWorkspaceData() {
     },
     [loadData]
   );
+
+  function withGoalCompletionFallback(description: string | null, isCompleted: boolean) {
+    const cleaned = (description || "").replace(GOAL_COMPLETED_MARKER, "").trim();
+    if (!isCompleted) return cleaned || null;
+    return cleaned ? `${cleaned}\n${GOAL_COMPLETED_MARKER}` : GOAL_COMPLETED_MARKER;
+  }
 
   async function createList(title: string) {
     const supabase = createSupabaseBrowserClient();
@@ -447,7 +466,6 @@ export function useWorkspaceData() {
       supabase.from("roadmap_goals").insert({
         phase_id: phaseId,
         title,
-        is_completed: false,
         position: goals.length
       })
     );
@@ -463,7 +481,33 @@ export function useWorkspaceData() {
     }
   ) {
     const supabase = createSupabaseBrowserClient();
-    await withRefresh(() => supabase.from("roadmap_goals").update(patch).eq("id", id));
+    await withRefresh(async () => {
+      const { is_completed, ...rest } = patch;
+
+      if (Object.keys(rest).length > 0) {
+        await supabase.from("roadmap_goals").update(rest).eq("id", id);
+      }
+
+      if (typeof is_completed !== "boolean") return;
+
+      const completionResult = await supabase
+        .from("roadmap_goals")
+        .update({ is_completed })
+        .eq("id", id);
+
+      if (!completionResult.error) return;
+
+      const targetGoal = data.phases
+        .flatMap((phase) => phase.roadmap_goals || [])
+        .find((goal) => goal.id === id);
+
+      await supabase
+        .from("roadmap_goals")
+        .update({
+          description: withGoalCompletionFallback(targetGoal?.description || null, is_completed)
+        })
+        .eq("id", id);
+    });
   }
 
   async function deleteGoal(id: string) {

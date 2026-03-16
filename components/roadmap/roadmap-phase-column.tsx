@@ -119,21 +119,22 @@ export function RoadmapPhaseColumn({
         </div>
 
         {!overview ? (
-          <div className="mb-4 flex items-center gap-2">
+          <div className="mb-4 space-y-2">
             <Input
               placeholder="Nuovo goal"
               value={newGoalTitle}
               onChange={(event) => setNewGoalTitle(event.target.value)}
             />
             <Button
-              className={overview ? "min-h-10 px-3 py-2" : ""}
+              className="w-full"
               onClick={async () => {
                 if (!newGoalTitle.trim()) return;
                 await onCreateGoal(phase.id, newGoalTitle.trim());
                 setNewGoalTitle("");
               }}
             >
-              <Plus className={overview ? "h-3.5 w-3.5" : "h-4 w-4"} />
+              <Plus className="mr-2 h-4 w-4" />
+              Aggiungi goal
             </Button>
           </div>
         ) : null}
