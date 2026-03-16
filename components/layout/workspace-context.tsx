@@ -34,6 +34,7 @@ export function WorkspaceProvider({
 }) {
   const [workspaces, setWorkspaces] = useState<WorkspaceItem[]>([]);
   const [activeWorkspaceId, setActiveWorkspaceId] = useState<string | null>(null);
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
     const workspacesKey = getStorageKey(profile.id, "workspaces");
@@ -62,6 +63,7 @@ export function WorkspaceProvider({
 
     setWorkspaces(initialWorkspaces);
     setActiveWorkspaceId(initialActiveId);
+    setReady(true);
 
     window.localStorage.setItem(workspacesKey, JSON.stringify(initialWorkspaces));
     window.localStorage.setItem(activeKey, initialActiveId);
@@ -74,6 +76,12 @@ export function WorkspaceProvider({
     window.localStorage.setItem(activeKey, nextActiveId);
   }
 
+  useEffect(() => {
+    if (!ready) return;
+    if (!activeWorkspaceId) return;
+    persist(workspaces, activeWorkspaceId);
+  }, [ready, workspaces, activeWorkspaceId]);
+
   function createWorkspace(name: string, description = "") {
     const created: WorkspaceItem = {
       id: crypto.randomUUID(),
@@ -81,28 +89,27 @@ export function WorkspaceProvider({
       description,
       createdAt: new Date().toISOString()
     };
-    const next = [...workspaces, created];
-    setWorkspaces(next);
+    setWorkspaces((current) => [...current, created]);
     setActiveWorkspaceId(created.id);
-    persist(next, created.id);
     return created;
   }
 
   function setActiveWorkspace(workspaceId: string) {
-    if (!workspaces.some((workspace) => workspace.id === workspaceId)) return;
+    if (!workspaces.some((workspace) => workspace.id === workspaceId)) {
+      return;
+    }
     setActiveWorkspaceId(workspaceId);
-    persist(workspaces, workspaceId);
   }
 
   function renameWorkspace(workspaceId: string, name: string) {
     const nextName = name.trim();
     if (!nextName) return;
 
-    const next = workspaces.map((workspace) =>
-      workspace.id === workspaceId ? { ...workspace, name: nextName } : workspace
+    setWorkspaces((current) =>
+      current.map((workspace) =>
+        workspace.id === workspaceId ? { ...workspace, name: nextName } : workspace
+      )
     );
-    setWorkspaces(next);
-    persist(next, activeWorkspaceId || next[0]?.id || workspaceId);
   }
 
   const value = useMemo<WorkspaceContextValue>(() => {
