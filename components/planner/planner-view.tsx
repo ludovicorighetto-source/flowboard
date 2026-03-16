@@ -6,7 +6,6 @@ import { useMemo, useState } from "react";
 import { AppHeader } from "@/components/layout/app-header";
 import { PlannerCalendar } from "@/components/planner/planner-calendar";
 import { DueSoonPanel } from "@/components/planner/due-soon-panel";
-import { PlannerMobileList } from "@/components/planner/planner-mobile-list";
 import { TaskDetailModal } from "@/components/task/task-detail-modal";
 import { EmptyState } from "@/components/ui/empty-state";
 import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
@@ -61,9 +60,9 @@ export function PlannerView() {
         userLabel={userLabel}
       />
 
-      <div className="space-y-4 lg:hidden">
+      <div className="space-y-4 xl:hidden">
         <DueSoonPanel tasks={dueSoonTasks} onTaskClick={setSelectedTask} />
-        <PlannerMobileList
+        <PlannerCalendar
           currentMonth={currentMonth}
           tasks={plannedTasks}
           onPrevMonth={() =>

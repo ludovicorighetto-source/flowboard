@@ -2,14 +2,24 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CalendarDays, KanbanSquare, ShieldCheck, Target, LogOut, X } from "lucide-react";
+import {
+  BriefcaseBusiness,
+  CalendarDays,
+  KanbanSquare,
+  ShieldCheck,
+  Target,
+  LogOut,
+  X
+} from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { useWorkspaceContext } from "@/components/layout/workspace-context";
 import { cn } from "@/lib/utils/cn";
 import type { Profile } from "@/types";
 
 const items = [
+  { href: "/workspaces", label: "I miei workspaces", icon: BriefcaseBusiness },
   { href: "/board", label: "Board", icon: KanbanSquare },
   { href: "/planner", label: "Planner", icon: CalendarDays },
   { href: "/roadmap", label: "Roadmap", icon: Target }
@@ -24,6 +34,7 @@ export function AppSidebar({
 }) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { activeWorkspace } = useWorkspaceContext();
 
   useEffect(() => {
     function openNav() {
@@ -45,7 +56,10 @@ export function AppSidebar({
           <p className="text-xs font-semibold uppercase tracking-[0.24em] text-muted">
             FlowBoard
           </p>
-          <h1 className="text-2xl font-semibold tracking-tight text-ink">Workspace</h1>
+          <p className="text-xs font-medium uppercase tracking-[0.16em] text-muted">Workspace</p>
+          <h1 className="line-clamp-2 text-lg font-semibold tracking-tight text-ink">
+            {activeWorkspace?.name || "Workspace principale"}
+          </h1>
         </div>
         <button
           type="button"

@@ -48,10 +48,12 @@ export function PlannerCalendar({
 
   return (
     <div className="panel overflow-hidden">
-      <div className="flex items-center justify-between border-b border-black/[0.06] px-5 py-4">
+      <div className="flex items-center justify-between border-b border-black/[0.06] px-3 py-3 sm:px-5 sm:py-4">
         <div>
-          <h3 className="text-xl font-semibold text-ink">{format(currentMonth, "MMMM yyyy")}</h3>
-          <p className="text-sm text-muted">Vista mensile dei task con intervallo date.</p>
+          <h3 className="text-lg font-semibold text-ink sm:text-xl">
+            {format(currentMonth, "MMMM yyyy")}
+          </h3>
+          <p className="text-xs text-muted sm:text-sm">Vista mensile dei task con intervallo date.</p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="secondary" onClick={onPrevMonth}>
@@ -65,7 +67,7 @@ export function PlannerCalendar({
 
       <div className="grid grid-cols-7 border-b border-black/[0.06] bg-[#fafafa]">
         {weekLabels.map((label) => (
-          <div key={label} className="px-4 py-3 text-sm font-medium text-muted">
+          <div key={label} className="px-1.5 py-2 text-center text-[11px] font-medium text-muted sm:px-4 sm:py-3 sm:text-sm">
             {label}
           </div>
         ))}
@@ -80,13 +82,13 @@ export function PlannerCalendar({
                 <div
                   key={day.toISOString()}
                   className={cn(
-                    "min-h-[160px] border-r border-black/[0.04] px-2 py-2 last:border-r-0",
+                    "min-h-[96px] border-r border-black/[0.04] px-1.5 py-1.5 last:border-r-0 sm:min-h-[140px] sm:px-2 sm:py-2 lg:min-h-[160px]",
                     !isSameMonth(day, currentMonth) && "bg-black/[0.015]"
                   )}
                 >
                   <div
                     className={cn(
-                      "mb-2 inline-flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold",
+                      "mb-1 inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold sm:mb-2 sm:h-8 sm:w-8 sm:text-sm",
                       isToday(day) ? "bg-action text-white" : "text-ink"
                     )}
                   >
@@ -106,7 +108,7 @@ export function PlannerCalendar({
                           type="button"
                           onClick={() => onTaskClick(task)}
                           className={cn(
-                            "w-full truncate px-2 py-1 text-left text-xs font-medium text-white",
+                            "w-full truncate px-1 py-0.5 text-left text-[10px] font-medium text-white sm:px-2 sm:py-1 sm:text-xs",
                             isStart && "rounded-l-control",
                             isEnd && "rounded-r-control",
                             !isStart && !isEnd && "rounded-none",
@@ -120,7 +122,7 @@ export function PlannerCalendar({
                       );
                     })}
                     {dayTasks.length > 4 ? (
-                      <p className="px-1 text-xs text-muted">+{dayTasks.length - 4} altri</p>
+                      <p className="px-1 text-[10px] text-muted sm:text-xs">+{dayTasks.length - 4} altri</p>
                     ) : null}
                   </div>
                 </div>

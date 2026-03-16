@@ -39,8 +39,14 @@ export default function LoginPage() {
 
   return (
     <div className="mx-auto max-w-md space-y-8">
+      <div className="space-y-3">
+        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-muted">FlowBoard</p>
+        <h1 className="text-4xl font-semibold tracking-tight text-ink">FlowBoard</h1>
+        <p className="text-sm leading-6 text-muted">Il tuo workspace, con semplicita.</p>
+      </div>
+
       <div className="space-y-2">
-        <h2 className="text-3xl font-semibold tracking-tight text-ink">Accedi</h2>
+        <h2 className="text-2xl font-semibold tracking-tight text-ink">Accedi</h2>
         <p className="text-sm leading-6 text-muted">
           Inserisci le tue credenziali per entrare in FlowBoard.
         </p>

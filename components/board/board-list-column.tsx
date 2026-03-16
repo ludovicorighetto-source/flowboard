@@ -36,6 +36,7 @@ export function BoardListColumn({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const titleInputRef = useRef<HTMLInputElement>(null);
   const listColorClass = getListColorClass(list.title, list.position);
+  const overviewReadOnlyTitle = compact && !shouldFocusTitle;
 
   useEffect(() => {
     setTitle(list.title);
@@ -49,17 +50,25 @@ export function BoardListColumn({
 
   return (
     <>
-      <div className={`panel flex h-full flex-col ${compact ? "w-[220px]" : "w-[320px]"} p-3`}>
+      <div className={`panel flex h-full flex-col ${compact ? "w-[250px]" : "w-[320px]"} p-3`}>
         <div className="mb-3 flex items-center gap-2">
-          <Input
-            ref={titleInputRef}
-            value={title}
-            onChange={(event) => setTitle(event.target.value)}
-            onBlur={() => onRenameList(list.id, title)}
-            className={`border-0 bg-transparent px-1 font-semibold ${
-              compact ? "min-h-10 text-sm" : "min-h-12 text-base"
-            }`}
-          />
+          <div className="min-w-0 flex-1">
+            {overviewReadOnlyTitle ? (
+              <p className="line-clamp-2 break-words px-1 text-sm font-semibold leading-5 text-ink">
+                {list.title}
+              </p>
+            ) : (
+              <Input
+                ref={titleInputRef}
+                value={title}
+                onChange={(event) => setTitle(event.target.value)}
+                onBlur={() => onRenameList(list.id, title)}
+                className={`border-0 bg-transparent px-1 font-semibold ${
+                  compact ? "min-h-10 text-sm" : "min-h-12 text-base"
+                }`}
+              />
+            )}
+          </div>
           <div className="flex items-center gap-1">
             <Button
               variant="ghost"
@@ -68,16 +77,20 @@ export function BoardListColumn({
             >
               <Plus className={compact ? "h-3.5 w-3.5" : "h-4 w-4"} />
             </Button>
-            <Button
-              variant="ghost"
-              className={compact ? "min-h-9 min-w-9 px-2 py-2" : ""}
-              onClick={() => setShowDeleteConfirm(true)}
-            >
-              <Trash2 className={compact ? "h-3.5 w-3.5" : "h-4 w-4"} />
-            </Button>
-            <Button variant="ghost" className={compact ? "min-h-9 min-w-9 px-2 py-2" : ""}>
-              <MoreHorizontal className={compact ? "h-3.5 w-3.5" : "h-4 w-4"} />
-            </Button>
+            {!compact ? (
+              <>
+                <Button
+                  variant="ghost"
+                  className={compact ? "min-h-9 min-w-9 px-2 py-2" : ""}
+                  onClick={() => setShowDeleteConfirm(true)}
+                >
+                  <Trash2 className={compact ? "h-3.5 w-3.5" : "h-4 w-4"} />
+                </Button>
+                <Button variant="ghost" className={compact ? "min-h-9 min-w-9 px-2 py-2" : ""}>
+                  <MoreHorizontal className={compact ? "h-3.5 w-3.5" : "h-4 w-4"} />
+                </Button>
+              </>
+            ) : null}
           </div>
         </div>
 
