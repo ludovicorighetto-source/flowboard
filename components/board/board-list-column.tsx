@@ -56,17 +56,27 @@ export function BoardListColumn({
             value={title}
             onChange={(event) => setTitle(event.target.value)}
             onBlur={() => onRenameList(list.id, title)}
-            className="min-h-12 border-0 bg-transparent px-1 text-base font-semibold"
+            className={`border-0 bg-transparent px-1 font-semibold ${
+              compact ? "min-h-10 text-sm" : "min-h-12 text-base"
+            }`}
           />
           <div className="flex items-center gap-1">
-            <Button variant="ghost" onClick={() => setShowComposer((current) => !current)}>
-              <Plus className="h-4 w-4" />
+            <Button
+              variant="ghost"
+              className={compact ? "min-h-9 min-w-9 px-2 py-2" : ""}
+              onClick={() => setShowComposer((current) => !current)}
+            >
+              <Plus className={compact ? "h-3.5 w-3.5" : "h-4 w-4"} />
             </Button>
-            <Button variant="ghost" onClick={() => setShowDeleteConfirm(true)}>
-              <Trash2 className="h-4 w-4" />
+            <Button
+              variant="ghost"
+              className={compact ? "min-h-9 min-w-9 px-2 py-2" : ""}
+              onClick={() => setShowDeleteConfirm(true)}
+            >
+              <Trash2 className={compact ? "h-3.5 w-3.5" : "h-4 w-4"} />
             </Button>
-            <Button variant="ghost">
-              <MoreHorizontal className="h-4 w-4" />
+            <Button variant="ghost" className={compact ? "min-h-9 min-w-9 px-2 py-2" : ""}>
+              <MoreHorizontal className={compact ? "h-3.5 w-3.5" : "h-4 w-4"} />
             </Button>
           </div>
         </div>
@@ -99,10 +109,12 @@ export function BoardListColumn({
         <Droppable droppableId={list.id}>
           {(provided) => (
             <div
-              ref={provided.innerRef}
-              {...provided.droppableProps}
-              className="subtle-scrollbar flex min-h-[180px] flex-1 flex-col gap-2 overflow-y-auto pr-1"
-            >
+            ref={provided.innerRef}
+            {...provided.droppableProps}
+            className={`subtle-scrollbar flex flex-1 flex-col gap-2 overflow-y-auto pr-1 ${
+              compact ? "min-h-[140px]" : "min-h-[180px]"
+            }`}
+          >
               {tasks.map((task, index) => (
                 <Draggable key={task.id} draggableId={task.id} index={index}>
                   {(draggableProvided) => (

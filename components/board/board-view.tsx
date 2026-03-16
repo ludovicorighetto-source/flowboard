@@ -2,7 +2,7 @@
 
 import { DragDropContext, type DropResult } from "@hello-pangea/dnd";
 import { LayoutGrid, Plus } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { BoardListColumn } from "@/components/board/board-list-column";
 import { AppHeader } from "@/components/layout/app-header";
@@ -18,6 +18,7 @@ export function BoardView() {
   const [overview, setOverview] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [focusListId, setFocusListId] = useState<string | null>(null);
+  const boardScrollRef = useRef<HTMLDivElement>(null);
   const userLabel = (workspace.currentUser?.full_name || workspace.currentUser?.email || "U")
     .slice(0, 2)
     .toUpperCase();
@@ -33,7 +34,11 @@ export function BoardView() {
 
   useEffect(() => {
     if (!focusListId) return;
-    const timer = window.setTimeout(() => setFocusListId(null), 700);
+    const timer = window.setTimeout(() => {
+      const target = boardScrollRef.current?.querySelector<HTMLElement>(`[data-list-id="${focusListId}"]`);
+      target?.scrollIntoView({ behavior: "smooth", inline: "start", block: "nearest" });
+      setFocusListId(null);
+    }, 120);
     return () => window.clearTimeout(timer);
   }, [focusListId]);
 
@@ -131,21 +136,56 @@ export function BoardView() {
         />
       ) : (
         <DragDropContext onDragEnd={onDragEnd}>
-          <div className="subtle-scrollbar flex gap-3 overflow-x-auto pb-4">
-            {workspace.data.lists.map((list) => (
-              <BoardListColumn
-                key={list.id}
-                list={list}
-                tasks={tasksByList[list.id] || []}
-                compact={overview}
-                shouldFocusTitle={focusListId === list.id}
-                onTaskClick={(task) => setSelectedTask(task)}
-                onRenameList={(listId, title) => workspace.updateList(listId, { title })}
-                onDeleteList={workspace.deleteList}
-                onCreateTask={workspace.createTask}
-              />
-            ))}
-          </div>
+          <>
+            {overview ? (
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:hidden">
+                {workspace.data.lists.map((list) => {
+                  const listTasks = tasksByList[list.id] || [];
+                  return (
+                    <button
+                      key={list.id}
+                      type="button"
+                      className="focus-ring panel min-h-[150px] p-3 text-left"
+                      onClick={() => {
+                        setOverview(false);
+                        setFocusListId(list.id);
+                      }}
+                    >
+                      <p className="line-clamp-2 text-sm font-semibold text-ink">{list.title}</p>
+                      <p className="mt-1 text-xs text-muted">{listTasks.length} task</p>
+                      <div className="mt-3 space-y-1.5">
+                        {listTasks.slice(0, 3).map((task) => (
+                          <p key={task.id} className="line-clamp-1 text-xs text-muted">
+                            • {task.title}
+                          </p>
+                        ))}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            ) : null}
+
+            <div
+              ref={boardScrollRef}
+              className={`subtle-scrollbar gap-3 overflow-x-auto pb-4 ${overview ? "hidden lg:flex" : "flex"}`}
+            >
+              {workspace.data.lists.map((list) => (
+                <div key={list.id} data-list-id={list.id} className="shrink-0">
+                  <BoardListColumn
+                    list={list}
+                    tasks={tasksByList[list.id] || []}
+                    compact={overview}
+                    shouldFocusTitle={focusListId === list.id}
+                    onTaskClick={(task) => setSelectedTask(task)}
+                    onRenameList={(listId, title) => workspace.updateList(listId, { title })}
+                    onDeleteList={workspace.deleteList}
+                    onCreateTask={workspace.createTask}
+                  />
+                </div>
+              ))}
+            </div>
+          </>
         </DragDropContext>
       )}
 

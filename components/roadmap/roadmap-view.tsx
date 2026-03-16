@@ -1,7 +1,7 @@
 "use client";
 
 import { LayoutGrid, Plus } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { AppHeader } from "@/components/layout/app-header";
 import { RoadmapPhaseColumn } from "@/components/roadmap/roadmap-phase-column";
@@ -18,9 +18,23 @@ export function RoadmapView() {
   const [createOpen, setCreateOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [color, setColor] = useState("#0071e3");
+  const [focusPhaseId, setFocusPhaseId] = useState<string | null>(null);
+  const roadmapScrollRef = useRef<HTMLDivElement>(null);
   const userLabel = (workspace.currentUser?.full_name || workspace.currentUser?.email || "U")
     .slice(0, 2)
     .toUpperCase();
+
+  useEffect(() => {
+    if (!focusPhaseId) return;
+    const timer = window.setTimeout(() => {
+      const target = roadmapScrollRef.current?.querySelector<HTMLElement>(
+        `[data-phase-id="${focusPhaseId}"]`
+      );
+      target?.scrollIntoView({ behavior: "smooth", inline: "start", block: "nearest" });
+      setFocusPhaseId(null);
+    }, 120);
+    return () => window.clearTimeout(timer);
+  }, [focusPhaseId]);
 
   if (workspace.loading) {
     return <LoadingSkeleton className="h-[520px] w-full" />;
@@ -71,26 +85,59 @@ export function RoadmapView() {
           onAction={() => setCreateOpen(true)}
         />
       ) : (
-        <div className="subtle-scrollbar flex gap-4 overflow-x-auto pb-4">
-          {workspace.data.phases.map((phase, index) => (
-            <div key={phase.id} className="flex items-stretch gap-4">
-              <RoadmapPhaseColumn
-                phase={phase}
-                overview={overview}
-                tasks={workspace.data.tasks}
-                onUpdatePhase={workspace.updatePhase}
-                onDeletePhase={workspace.deletePhase}
-                onCreateGoal={workspace.createGoal}
-                onUpdateGoal={workspace.updateGoal}
-                onDeleteGoal={workspace.deleteGoal}
-                onSetGoalTasks={workspace.setGoalTasks}
-              />
-              {index < workspace.data.phases.length - 1 ? (
-                <div className="flex items-center text-3xl text-black/12">→</div>
-              ) : null}
+        <>
+          {overview ? (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:hidden">
+              {workspace.data.phases.map((phase) => (
+                <button
+                  key={phase.id}
+                  type="button"
+                  className="focus-ring panel min-h-[160px] p-3 text-left"
+                  onClick={() => {
+                    setOverview(false);
+                    setFocusPhaseId(phase.id);
+                  }}
+                >
+                  <p className="line-clamp-2 text-sm font-semibold text-ink">{phase.title}</p>
+                  <p className="mt-1 text-xs text-muted">
+                    {(phase.roadmap_goals || []).length} goal
+                  </p>
+                  <div className="mt-3 space-y-1.5">
+                    {(phase.roadmap_goals || []).slice(0, 3).map((goal) => (
+                      <p key={goal.id} className="line-clamp-1 text-xs text-muted">
+                        • {goal.title}
+                      </p>
+                    ))}
+                  </div>
+                </button>
+              ))}
             </div>
-          ))}
-        </div>
+          ) : null}
+
+          <div
+            ref={roadmapScrollRef}
+            className={`subtle-scrollbar gap-4 overflow-x-auto pb-4 ${overview ? "hidden lg:flex" : "flex"}`}
+          >
+            {workspace.data.phases.map((phase, index) => (
+              <div key={phase.id} data-phase-id={phase.id} className="flex items-stretch gap-4">
+                <RoadmapPhaseColumn
+                  phase={phase}
+                  overview={overview}
+                  tasks={workspace.data.tasks}
+                  onUpdatePhase={workspace.updatePhase}
+                  onDeletePhase={workspace.deletePhase}
+                  onCreateGoal={workspace.createGoal}
+                  onUpdateGoal={workspace.updateGoal}
+                  onDeleteGoal={workspace.deleteGoal}
+                  onSetGoalTasks={workspace.setGoalTasks}
+                />
+                {index < workspace.data.phases.length - 1 ? (
+                  <div className="flex items-center text-3xl text-black/12">→</div>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        </>
       )}
 
       <Modal open={createOpen} onClose={() => setCreateOpen(false)} title="Nuova fase" className="max-w-md">

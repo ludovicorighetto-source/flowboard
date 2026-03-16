@@ -48,10 +48,14 @@ export function RoadmapPhaseColumn({
             <Input
               defaultValue={phase.title}
               onBlur={(event) => onUpdatePhase(phase.id, { title: event.target.value })}
-              className={`border-0 bg-transparent px-0 font-semibold ${overview ? "text-base" : "text-lg"}`}
+              className={`border-0 bg-transparent px-0 font-semibold ${overview ? "min-h-10 text-base" : "min-h-12 text-lg"}`}
             />
-            <Button variant="ghost" onClick={() => setShowDeleteConfirm(true)}>
-              <Trash2 className="h-4 w-4" />
+            <Button
+              variant="ghost"
+              className={overview ? "min-h-9 min-w-9 px-2 py-2" : ""}
+              onClick={() => setShowDeleteConfirm(true)}
+            >
+              <Trash2 className={overview ? "h-3.5 w-3.5" : "h-4 w-4"} />
             </Button>
           </div>
           {!overview ? (
@@ -88,13 +92,14 @@ export function RoadmapPhaseColumn({
               onChange={(event) => setNewGoalTitle(event.target.value)}
             />
             <Button
+              className={overview ? "min-h-10 px-3 py-2" : ""}
               onClick={async () => {
                 if (!newGoalTitle.trim()) return;
                 await onCreateGoal(phase.id, newGoalTitle.trim());
                 setNewGoalTitle("");
               }}
             >
-              <Plus className="h-4 w-4" />
+              <Plus className={overview ? "h-3.5 w-3.5" : "h-4 w-4"} />
             </Button>
           </div>
         ) : null}

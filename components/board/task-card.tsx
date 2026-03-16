@@ -31,7 +31,7 @@ export function TaskCard({
       <div className={`w-1 rounded-l-md ${listColorClass}`} />
       <div className={`w-full ${compact ? "space-y-2 px-2.5 py-2.5" : "space-y-3 px-3 py-3 lg:px-4 lg:py-4"}`}>
         <div className="flex items-start justify-between gap-3">
-          <p className={`line-clamp-2 font-semibold text-ink ${compact ? "text-xs leading-5" : "text-sm leading-6"}`}>
+          <p className={`line-clamp-2 font-semibold text-ink ${compact ? "text-sm leading-5" : "text-sm leading-6"}`}>
             {task.title}
           </p>
           {!compact ? <Badge className={priority.className}>{priority.label}</Badge> : null}
