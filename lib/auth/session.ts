@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { unstable_noStore as noStore } from "next/cache";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { Profile } from "@/types";
@@ -13,6 +14,7 @@ export async function getCurrentSession() {
 }
 
 export async function getCurrentProfile() {
+  noStore();
   const { supabase, user } = await getCurrentSession();
 
   if (!user) {
@@ -32,6 +34,10 @@ export async function requireAuth() {
   const { user, profile } = await getCurrentProfile();
 
   if (!user) redirect("/login");
+  if (profile && !profile.is_approved) redirect("/pending");
+  if (!profile && user.email !== "ludovico.righetto@gmail.com") {
+    redirect("/pending");
+  }
 
   return {
     user,

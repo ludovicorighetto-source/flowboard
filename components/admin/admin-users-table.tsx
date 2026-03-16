@@ -1,9 +1,11 @@
 "use client";
 
 import { format, parseISO } from "date-fns";
+import { useMemo, useState } from "react";
 
 import { AppHeader } from "@/components/layout/app-header";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { EmptyState } from "@/components/ui/empty-state";
 import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
 import { useWorkspaceData } from "@/hooks/use-workspace-data";
@@ -14,6 +16,19 @@ export function AdminUsersTable() {
   const userLabel = (workspace.currentUser?.full_name || workspace.currentUser?.email || "U")
     .slice(0, 2)
     .toUpperCase();
+  const [revokeTarget, setRevokeTarget] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
+
+  const pendingUsers = useMemo(
+    () => workspace.data.allUsers.filter((user) => !user.is_approved),
+    [workspace.data.allUsers]
+  );
+  const approvedUsers = useMemo(
+    () => workspace.data.allUsers.filter((user) => user.is_approved),
+    [workspace.data.allUsers]
+  );
 
   if (workspace.loading) {
     return <LoadingSkeleton className="h-[420px] w-full" />;
@@ -30,14 +45,18 @@ export function AdminUsersTable() {
     );
   }
 
-  return (
-    <div>
-      <AppHeader
-        title="Admin"
-        description="Approva nuovi utenti o revoca l’accesso. Gli utenti non approvati restano bloccati sulla pagina di attesa."
-        userLabel={userLabel}
-      />
+  function notifyApprovalChange() {
+    window.dispatchEvent(new Event("flowboard:approvals-changed"));
+  }
 
+  function UsersTable({
+    users,
+    mode
+  }: {
+    users: typeof pendingUsers;
+    mode: "pending" | "approved";
+  }) {
+    return (
       <div className="panel overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-black/[0.06]">
@@ -61,7 +80,7 @@ export function AdminUsersTable() {
               </tr>
             </thead>
             <tbody className="divide-y divide-black/[0.05] bg-white">
-              {workspace.data.allUsers.map((user) => (
+              {users.map((user) => (
                 <tr key={user.id}>
                   <td className="px-5 py-4 text-sm font-medium text-ink">
                     {user.full_name || "Utente"}
@@ -82,19 +101,27 @@ export function AdminUsersTable() {
                     )}
                   </td>
                   <td className="px-5 py-4 text-right">
-                    {user.email === ADMIN_EMAIL ? null : user.is_approved ? (
+                    {user.email === ADMIN_EMAIL ? null : mode === "pending" ? (
                       <Button
-                        variant="danger"
-                        onClick={() => void workspace.setUserApproval(user.id, false)}
+                        variant="success"
+                        onClick={async () => {
+                          await workspace.setUserApproval(user.id, true);
+                          notifyApprovalChange();
+                        }}
                       >
-                        Revoca accesso
+                        Approva
                       </Button>
                     ) : (
                       <Button
-                        variant="success"
-                        onClick={() => void workspace.setUserApproval(user.id, true)}
+                        variant="danger"
+                        onClick={() =>
+                          setRevokeTarget({
+                            id: user.id,
+                            name: user.full_name || user.email
+                          })
+                        }
                       >
-                        Approva
+                        Revoca accesso
                       </Button>
                     )}
                   </td>
@@ -104,6 +131,62 @@ export function AdminUsersTable() {
           </table>
         </div>
       </div>
-    </div>
+    );
+  }
+
+  return (
+    <>
+      <div>
+      <AppHeader
+        title="Admin"
+        description="Approva nuovi utenti o revoca l’accesso. Gli utenti non approvati restano bloccati sulla pagina di attesa."
+        userLabel={userLabel}
+      />
+
+      <section className="mb-6 space-y-3">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold text-ink">Utenti in attesa</h3>
+          <span className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700">
+            {pendingUsers.length}
+          </span>
+        </div>
+        {pendingUsers.length === 0 ? (
+          <div className="rounded-xl border border-black/[0.06] bg-white px-4 py-6 text-sm text-muted">
+            Nessun utente in attesa di approvazione.
+          </div>
+        ) : (
+          <UsersTable users={pendingUsers} mode="pending" />
+        )}
+      </section>
+
+      <section className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold text-ink">Utenti approvati</h3>
+          <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700">
+            {approvedUsers.length}
+          </span>
+        </div>
+        <UsersTable users={approvedUsers} mode="approved" />
+      </section>
+      </div>
+
+      <ConfirmDialog
+        open={Boolean(revokeTarget)}
+        onClose={() => setRevokeTarget(null)}
+        title="Revocare l'accesso utente?"
+        description={
+          revokeTarget
+            ? `Sei sicuro di voler revocare l'accesso a ${revokeTarget.name}?`
+            : "Sei sicuro di voler revocare l'accesso a questo utente?"
+        }
+        confirmLabel="Revoca"
+        onConfirm={async () => {
+          if (!revokeTarget) return;
+          await workspace.setUserApproval(revokeTarget.id, false);
+          notifyApprovalChange();
+          setRevokeTarget(null);
+        }}
+      />
+    </>
   );
 }

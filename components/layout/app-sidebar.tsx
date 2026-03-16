@@ -15,6 +15,7 @@ import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { useWorkspaceContext } from "@/components/layout/workspace-context";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils/cn";
 import type { Profile } from "@/types";
 
@@ -34,6 +35,7 @@ export function AppSidebar({
 }) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [pendingCount, setPendingCount] = useState(0);
   const { activeWorkspace } = useWorkspaceContext();
 
   useEffect(() => {
@@ -48,6 +50,31 @@ export function AppSidebar({
   useEffect(() => {
     setMobileOpen(false);
   }, [pathname]);
+
+  useEffect(() => {
+    if (!profile.is_admin) return;
+
+    let mounted = true;
+    const supabase = createSupabaseBrowserClient();
+
+    async function loadPendingCount() {
+      const { count } = await supabase
+        .from("profiles")
+        .select("*", { count: "exact", head: true })
+        .eq("is_approved", false);
+      if (mounted) {
+        setPendingCount(count || 0);
+      }
+    }
+
+    void loadPendingCount();
+    window.addEventListener("flowboard:approvals-changed", loadPendingCount);
+
+    return () => {
+      mounted = false;
+      window.removeEventListener("flowboard:approvals-changed", loadPendingCount);
+    };
+  }, [profile.is_admin]);
 
   const drawerContent = (
     <div className="panel flex h-full flex-col px-4 py-5">
@@ -95,14 +122,21 @@ export function AppSidebar({
           <Link
             href="/admin"
             className={cn(
-              "flex min-h-12 items-center gap-3 rounded-xl px-4 py-3 text-base font-medium transition",
+              "flex min-h-12 items-center justify-between gap-3 rounded-xl px-4 py-3 text-base font-medium transition",
               pathname.startsWith("/admin")
                 ? "bg-[#eef4ff] text-action"
                 : "text-muted hover:bg-black/[0.04] hover:text-ink"
             )}
           >
-            <ShieldCheck className="h-5 w-5" />
-            Admin
+            <span className="flex items-center gap-3">
+              <ShieldCheck className="h-5 w-5" />
+              Admin
+            </span>
+            {pendingCount > 0 ? (
+              <span className="rounded-full bg-rose-500 px-2 py-0.5 text-xs font-semibold text-white">
+                {pendingCount}
+              </span>
+            ) : null}
           </Link>
         ) : null}
       </nav>
