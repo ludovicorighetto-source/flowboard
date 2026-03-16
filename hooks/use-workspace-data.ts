@@ -184,15 +184,20 @@ export function useWorkspaceData() {
     const supabase = createSupabaseBrowserClient();
     const listTasks = data.tasks.filter((task) => task.list_id === listId);
 
-    await withRefresh(() =>
-      supabase.from("tasks").insert({
+    const result = await supabase
+      .from("tasks")
+      .insert({
         title,
         list_id: listId,
         position: listTasks.length,
         priority: "medium",
         created_by: currentUser?.id
       })
-    );
+      .select("id")
+      .single<{ id: string }>();
+
+    await loadData();
+    return result.data?.id || null;
   }
 
   async function updateTask(
@@ -256,6 +261,31 @@ export function useWorkspaceData() {
         position: checklists.length
       })
     );
+  }
+
+  async function createChecklistWithItems(taskId: string, title: string, items: string[]) {
+    const supabase = createSupabaseBrowserClient();
+    const checklists = data.tasks.find((task) => task.id === taskId)?.checklists || [];
+
+    await withRefresh(async () => {
+      const checklistResult = await supabase
+        .from("checklists")
+        .insert({
+          task_id: taskId,
+          title,
+          position: checklists.length
+        })
+        .select("id")
+        .single<{ id: string }>();
+
+      if (checklistResult.error || !checklistResult.data?.id) return;
+      const rows = items
+        .map((text, index) => ({ checklist_id: checklistResult.data.id, text: text.trim(), is_done: false, position: index }))
+        .filter((item) => item.text.length > 0);
+
+      if (!rows.length) return;
+      await supabase.from("checklist_items").insert(rows);
+    });
   }
 
   async function updateChecklist(id: string, patch: { title?: string; position?: number }) {
@@ -568,6 +598,7 @@ export function useWorkspaceData() {
     deleteTask,
     moveTask,
     createChecklist,
+    createChecklistWithItems,
     updateChecklist,
     deleteChecklist,
     createChecklistItem,

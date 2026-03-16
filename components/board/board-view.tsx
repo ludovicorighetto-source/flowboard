@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
 import { useWorkspaceData } from "@/hooks/use-workspace-data";
+import type { Priority } from "@/types";
 import type { Task } from "@/types";
 
 export function BoardView() {
@@ -67,6 +68,30 @@ export function BoardView() {
       sourceTasks.map((task) => task.id),
       destinationTasks.map((task) => task.id)
     );
+  }
+
+  async function createTaskFromDraft(
+    listId: string,
+    draft: {
+      title: string;
+      description: string;
+      priority: Priority;
+      due_date: string | null;
+      checklist: string[];
+    }
+  ) {
+    const taskId = await workspace.createTask(listId, draft.title);
+    if (!taskId) return;
+
+    await workspace.updateTask(taskId, {
+      description: draft.description || null,
+      priority: draft.priority,
+      due_date: draft.due_date
+    });
+
+    if (draft.checklist.length > 0) {
+      await workspace.createChecklistWithItems(taskId, "Checklist suggerita", draft.checklist);
+    }
   }
 
   if (workspace.loading) {
@@ -181,6 +206,7 @@ export function BoardView() {
                     onRenameList={(listId, title) => workspace.updateList(listId, { title })}
                     onDeleteList={workspace.deleteList}
                     onCreateTask={workspace.createTask}
+                    onCreateTaskFromDraft={createTaskFromDraft}
                   />
                 </div>
               ))}

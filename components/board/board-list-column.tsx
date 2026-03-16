@@ -5,11 +5,12 @@ import { MoreHorizontal, Plus, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { TaskCard } from "@/components/board/task-card";
+import { DescribeAndCreateTaskModal } from "@/components/task/describe-and-create-task-modal";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
 import { getListColorClass } from "@/lib/utils/constants";
-import type { List, Task } from "@/types";
+import type { Priority, List, Task } from "@/types";
 
 export function BoardListColumn({
   list,
@@ -19,6 +20,7 @@ export function BoardListColumn({
   onRenameList,
   onDeleteList,
   onCreateTask,
+  onCreateTaskFromDraft,
   shouldFocusTitle = false
 }: {
   list: List;
@@ -27,12 +29,20 @@ export function BoardListColumn({
   onTaskClick: (task: Task) => void;
   onRenameList: (listId: string, title: string) => Promise<void>;
   onDeleteList: (listId: string) => Promise<void>;
-  onCreateTask: (listId: string, title: string) => Promise<void>;
+  onCreateTask: (listId: string, title: string) => Promise<string | null | void>;
+  onCreateTaskFromDraft: (listId: string, draft: {
+    title: string;
+    description: string;
+    priority: Priority;
+    due_date: string | null;
+    checklist: string[];
+  }) => Promise<void>;
   shouldFocusTitle?: boolean;
 }) {
   const [title, setTitle] = useState(list.title);
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [showComposer, setShowComposer] = useState(false);
+  const [showDescribeModal, setShowDescribeModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const titleInputRef = useRef<HTMLInputElement>(null);
   const listColorClass = getListColorClass(list.title, list.position);
@@ -122,6 +132,13 @@ export function BoardListColumn({
                 Crea task
               </Button>
             </div>
+            <Button
+              variant="secondary"
+              className="w-full"
+              onClick={() => setShowDescribeModal(true)}
+            >
+              Descrivi e crea
+            </Button>
           </div>
         ) : null}
 
@@ -168,6 +185,12 @@ export function BoardListColumn({
           await onDeleteList(list.id);
           setShowDeleteConfirm(false);
         }}
+      />
+
+      <DescribeAndCreateTaskModal
+        open={showDescribeModal}
+        onClose={() => setShowDescribeModal(false)}
+        onCreateTask={(draft) => onCreateTaskFromDraft(list.id, draft)}
       />
     </>
   );
