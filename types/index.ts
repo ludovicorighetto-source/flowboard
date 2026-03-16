@@ -74,6 +74,7 @@ export interface RoadmapGoal {
   phase_id: string;
   title: string;
   description: string | null;
+  is_completed: boolean;
   position: number;
   created_at: string;
   goal_tasks?: GoalTask[];

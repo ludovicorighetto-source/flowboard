@@ -8,12 +8,14 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import type { RoadmapPhase, Task } from "@/types";
+import { getPhaseProgress } from "@/lib/utils/roadmap";
+import type { List, RoadmapPhase, Task } from "@/types";
 
 export function RoadmapPhaseColumn({
   phase,
   overview,
   mobileFullWidth = false,
+  lists,
   tasks,
   onUpdatePhase,
   onDeletePhase,
@@ -25,6 +27,7 @@ export function RoadmapPhaseColumn({
   phase: RoadmapPhase;
   overview: boolean;
   mobileFullWidth?: boolean;
+  lists: List[];
   tasks: Task[];
   onUpdatePhase: (
     phaseId: string,
@@ -34,13 +37,14 @@ export function RoadmapPhaseColumn({
   onCreateGoal: (phaseId: string, title: string) => Promise<void>;
   onUpdateGoal: (
     goalId: string,
-    patch: { title?: string; description?: string | null }
+    patch: { title?: string; description?: string | null; is_completed?: boolean }
   ) => Promise<void>;
   onDeleteGoal: (goalId: string) => Promise<void>;
   onSetGoalTasks: (goalId: string, taskIds: string[]) => Promise<void>;
 }) {
   const [newGoalTitle, setNewGoalTitle] = useState("");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const phaseProgress = getPhaseProgress(phase, tasks, lists);
   const widthClass = mobileFullWidth
     ? overview
       ? "w-full lg:w-[240px]"
@@ -69,6 +73,18 @@ export function RoadmapPhaseColumn({
           </div>
           {!overview ? (
             <>
+              <div className="space-y-2 rounded-control border border-black/[0.06] bg-[#fafafa] px-3 py-2.5">
+                <div className="flex items-center justify-between text-xs text-muted">
+                  <span>Avanzamento fase</span>
+                  <span className="font-semibold text-ink">{phaseProgress.percent}%</span>
+                </div>
+                <div className="h-1.5 overflow-hidden rounded-full bg-black/[0.06]">
+                  <div className="h-full rounded-full bg-action" style={{ width: `${phaseProgress.percent}%` }} />
+                </div>
+                <p className="text-[11px] text-muted">
+                  {phaseProgress.completedGoals}/{phaseProgress.goals} goal completati
+                </p>
+              </div>
               <Textarea
                 defaultValue={phase.description || ""}
                 onBlur={(event) =>
@@ -87,9 +103,18 @@ export function RoadmapPhaseColumn({
               </label>
             </>
           ) : (
-            <p className="line-clamp-2 text-xs leading-5 text-muted">
-              {phase.description || "Nessuna descrizione"}
-            </p>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-xs text-muted">
+                <span>Completamento</span>
+                <span className="font-semibold text-ink">{phaseProgress.percent}%</span>
+              </div>
+              <div className="h-1.5 overflow-hidden rounded-full bg-black/[0.06]">
+                <div className="h-full rounded-full bg-action" style={{ width: `${phaseProgress.percent}%` }} />
+              </div>
+              <p className="line-clamp-2 text-xs leading-5 text-muted">
+                {phaseProgress.completedGoals}/{phaseProgress.goals} goal completati
+              </p>
+            </div>
           )}
         </div>
 
@@ -118,6 +143,7 @@ export function RoadmapPhaseColumn({
             <RoadmapGoalCard
               key={goal.id}
               goal={goal}
+              lists={lists}
               allTasks={tasks}
               overview={overview}
               onUpdate={onUpdateGoal}

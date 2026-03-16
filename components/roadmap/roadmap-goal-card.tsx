@@ -7,10 +7,12 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import type { RoadmapGoal, Task } from "@/types";
+import { getGoalProgress } from "@/lib/utils/roadmap";
+import type { List, RoadmapGoal, Task } from "@/types";
 
 export function RoadmapGoalCard({
   goal,
+  lists,
   allTasks,
   overview = false,
   onUpdate,
@@ -18,9 +20,13 @@ export function RoadmapGoalCard({
   onSetTasks
 }: {
   goal: RoadmapGoal;
+  lists: List[];
   allTasks: Task[];
   overview?: boolean;
-  onUpdate: (goalId: string, patch: { title?: string; description?: string | null }) => Promise<void>;
+  onUpdate: (
+    goalId: string,
+    patch: { title?: string; description?: string | null; is_completed?: boolean }
+  ) => Promise<void>;
   onDelete: (goalId: string) => Promise<void>;
   onSetTasks: (goalId: string, taskIds: string[]) => Promise<void>;
 }) {
@@ -31,24 +37,54 @@ export function RoadmapGoalCard({
     () => allTasks.filter((task) => selectedIds.includes(task.id)),
     [allTasks, selectedIds]
   );
+  const goalProgress = getGoalProgress(goal, allTasks, lists);
 
   return (
     <>
-      <div className={`rounded-panel border border-black/[0.06] bg-white ${overview ? "p-3" : "p-4"}`}>
+      <div
+        className={`rounded-panel border bg-white ${
+          goalProgress.isCompleted ? "border-green-200 bg-green-50/40" : "border-black/[0.06]"
+        } ${overview ? "p-3" : "p-4"}`}
+      >
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 space-y-1">
             <p className={`break-words font-semibold text-ink ${overview ? "text-xs" : "text-sm"}`}>{goal.title}</p>
-            <p className="text-xs text-muted">{linkedTasks.length} task collegati</p>
+            <p className="text-xs text-muted">
+              {goalProgress.completedLinkedTasks}/{goalProgress.linkedTasks} task completati
+            </p>
           </div>
-          {overview ? null : (
+          <div className="flex items-center gap-2">
             <button
               type="button"
-              className="text-muted hover:text-ink"
-              onClick={() => setExpanded((current) => !current)}
+              className={`rounded-control border px-2.5 py-1 text-[11px] font-semibold transition ${
+                goal.is_completed
+                  ? "border-green-300 bg-green-100 text-green-700"
+                  : "border-black/[0.08] bg-white text-muted hover:text-ink"
+              }`}
+              onClick={() => void onUpdate(goal.id, { is_completed: !goal.is_completed })}
             >
-              {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+              {goal.is_completed ? "Segnato completato" : "Segna completato"}
             </button>
-          )}
+            {overview ? null : (
+              <button
+                type="button"
+                className="text-muted hover:text-ink"
+                onClick={() => setExpanded((current) => !current)}
+              >
+                {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+              </button>
+            )}
+          </div>
+        </div>
+
+        <div className="mt-2 space-y-1.5">
+          <div className="flex items-center justify-between text-[11px] text-muted">
+            <span>Progresso goal</span>
+            <span className="font-semibold text-ink">{goalProgress.percent}%</span>
+          </div>
+          <div className="h-1.5 overflow-hidden rounded-full bg-black/[0.06]">
+            <div className="h-full rounded-full bg-action" style={{ width: `${goalProgress.percent}%` }} />
+          </div>
         </div>
 
         {goal.description ? (

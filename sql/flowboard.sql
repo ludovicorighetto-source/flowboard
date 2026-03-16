@@ -133,6 +133,7 @@ create table if not exists public.roadmap_goals (
   phase_id uuid not null references public.roadmap_phases(id) on delete cascade,
   title text not null,
   description text,
+  is_completed boolean not null default false,
   position integer not null default 0,
   created_at timestamptz not null default now()
 );
@@ -153,6 +154,9 @@ create index if not exists idx_checklist_items_checklist_id on public.checklist_
 create index if not exists idx_task_attachments_task_id on public.task_attachments(task_id);
 create index if not exists idx_roadmap_goals_phase_id on public.roadmap_goals(phase_id);
 create index if not exists idx_goal_tasks_task_id on public.goal_tasks(task_id);
+
+alter table public.roadmap_goals
+  add column if not exists is_completed boolean not null default false;
 
 create or replace function public.set_task_updated_at()
 returns trigger

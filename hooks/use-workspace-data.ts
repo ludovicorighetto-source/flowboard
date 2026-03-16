@@ -447,6 +447,7 @@ export function useWorkspaceData() {
       supabase.from("roadmap_goals").insert({
         phase_id: phaseId,
         title,
+        is_completed: false,
         position: goals.length
       })
     );
@@ -454,7 +455,12 @@ export function useWorkspaceData() {
 
   async function updateGoal(
     id: string,
-    patch: { title?: string; description?: string | null; position?: number }
+    patch: {
+      title?: string;
+      description?: string | null;
+      is_completed?: boolean;
+      position?: number;
+    }
   ) {
     const supabase = createSupabaseBrowserClient();
     await withRefresh(() => supabase.from("roadmap_goals").update(patch).eq("id", id));

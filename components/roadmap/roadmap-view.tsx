@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
 import { Modal } from "@/components/ui/modal";
 import { useWorkspaceData } from "@/hooks/use-workspace-data";
+import { getPhaseProgress } from "@/lib/utils/roadmap";
 
 export function RoadmapView() {
   const workspace = useWorkspaceData();
@@ -51,6 +52,11 @@ export function RoadmapView() {
     );
   }
 
+  const phaseSnapshots = workspace.data.phases.map((phase) => ({
+    phase,
+    progress: getPhaseProgress(phase, workspace.data.tasks, workspace.data.lists)
+  }));
+
   return (
     <div>
       <AppHeader
@@ -73,7 +79,7 @@ export function RoadmapView() {
 
       {overview ? (
         <div className="mb-4 rounded-xl border border-action/25 bg-[#eef4ff] px-4 py-3 text-sm font-medium text-action">
-          Overview mode attiva: roadmap compatta con riepilogo rapido di fasi e goal.
+          Overview mode attiva: vista strategica completa con progressi fase per fase.
         </div>
       ) : null}
 
@@ -87,28 +93,32 @@ export function RoadmapView() {
       ) : (
         <>
           {overview ? (
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:hidden">
-              {workspace.data.phases.map((phase) => (
+            <div className="space-y-2.5 lg:hidden">
+              {phaseSnapshots.map(({ phase, progress }, index) => (
                 <button
                   key={phase.id}
                   type="button"
-                  className="focus-ring panel min-h-[160px] p-3 text-left"
+                  className="focus-ring panel w-full p-3 text-left"
                   onClick={() => {
                     setOverview(false);
                     setFocusPhaseId(phase.id);
                   }}
                 >
                   <p className="line-clamp-2 text-sm font-semibold text-ink">{phase.title}</p>
-                  <p className="mt-1 text-xs text-muted">
-                    {(phase.roadmap_goals || []).length} goal
-                  </p>
-                  <div className="mt-3 space-y-1.5">
-                    {(phase.roadmap_goals || []).slice(0, 3).map((goal) => (
-                      <p key={goal.id} className="line-clamp-1 text-xs text-muted">
-                        • {goal.title}
-                      </p>
-                    ))}
+                  <div className="mt-2 flex items-center justify-between text-[11px] text-muted">
+                    <span>
+                      {progress.completedGoals}/{progress.goals} goal
+                    </span>
+                    <span className="font-semibold text-ink">{progress.percent}%</span>
                   </div>
+                  <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-black/[0.08]">
+                    <div className="h-full rounded-full bg-action" style={{ width: `${progress.percent}%` }} />
+                  </div>
+                  {index < phaseSnapshots.length - 1 ? (
+                    <div className="mt-3 flex items-center justify-center text-action/85">
+                      <ArrowDown className="h-4 w-4" />
+                    </div>
+                  ) : null}
                 </button>
               ))}
             </div>
@@ -121,6 +131,7 @@ export function RoadmapView() {
                   phase={phase}
                   overview={false}
                   mobileFullWidth
+                  lists={workspace.data.lists}
                   tasks={workspace.data.tasks}
                   onUpdatePhase={workspace.updatePhase}
                   onDeletePhase={workspace.deletePhase}
@@ -142,35 +153,71 @@ export function RoadmapView() {
             ))}
           </div>
 
-          <div
-            ref={roadmapScrollRef}
-            className={`subtle-scrollbar hidden gap-4 overflow-x-auto pb-4 lg:flex ${overview ? "lg:flex" : ""}`}
-          >
-            {workspace.data.phases.map((phase, index) => (
-              <div key={phase.id} data-phase-id={phase.id} className="flex items-stretch gap-4">
-                <RoadmapPhaseColumn
-                  phase={phase}
-                  overview={overview}
-                  tasks={workspace.data.tasks}
-                  onUpdatePhase={workspace.updatePhase}
-                  onDeletePhase={workspace.deletePhase}
-                  onCreateGoal={workspace.createGoal}
-                  onUpdateGoal={workspace.updateGoal}
-                  onDeleteGoal={workspace.deleteGoal}
-                  onSetGoalTasks={workspace.setGoalTasks}
-                />
-                {index < workspace.data.phases.length - 1 ? (
-                  <div className="flex items-center">
-                    <div className="flex items-center gap-2 rounded-full border border-action/15 bg-[#eef4ff] px-3 py-1.5 text-action/85">
-                      <span className="h-px w-5 bg-action/35" />
-                      <ArrowRight className="h-4 w-4" />
-                      <span className="h-px w-5 bg-action/35" />
+          {overview ? (
+            <div className="hidden lg:block">
+              <div className="grid grid-cols-3 gap-3 xl:grid-cols-4">
+                {phaseSnapshots.map(({ phase, progress }, index) => (
+                  <button
+                    key={phase.id}
+                    type="button"
+                    className="focus-ring panel min-h-[150px] p-3 text-left"
+                    onClick={() => {
+                      setOverview(false);
+                      setFocusPhaseId(phase.id);
+                    }}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="line-clamp-2 text-sm font-semibold text-ink">{phase.title}</p>
+                      {index < phaseSnapshots.length - 1 ? (
+                        <ArrowRight className="mt-0.5 h-4 w-4 shrink-0 text-action/80" />
+                      ) : null}
                     </div>
-                  </div>
-                ) : null}
+                    <div className="mt-2 flex items-center justify-between text-[11px] text-muted">
+                      <span>
+                        {progress.completedGoals}/{progress.goals} goal
+                      </span>
+                      <span className="font-semibold text-ink">{progress.percent}%</span>
+                    </div>
+                    <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-black/[0.08]">
+                      <div className="h-full rounded-full bg-action" style={{ width: `${progress.percent}%` }} />
+                    </div>
+                    <p className="mt-2 text-[11px] text-muted">Fase {index + 1}</p>
+                  </button>
+                ))}
               </div>
-            ))}
-          </div>
+            </div>
+          ) : (
+            <div
+              ref={roadmapScrollRef}
+              className="subtle-scrollbar hidden gap-4 overflow-x-auto pb-4 lg:flex"
+            >
+              {workspace.data.phases.map((phase, index) => (
+                <div key={phase.id} data-phase-id={phase.id} className="flex items-stretch gap-4">
+                  <RoadmapPhaseColumn
+                    phase={phase}
+                    overview={false}
+                    lists={workspace.data.lists}
+                    tasks={workspace.data.tasks}
+                    onUpdatePhase={workspace.updatePhase}
+                    onDeletePhase={workspace.deletePhase}
+                    onCreateGoal={workspace.createGoal}
+                    onUpdateGoal={workspace.updateGoal}
+                    onDeleteGoal={workspace.deleteGoal}
+                    onSetGoalTasks={workspace.setGoalTasks}
+                  />
+                  {index < workspace.data.phases.length - 1 ? (
+                    <div className="flex items-center">
+                      <div className="flex items-center gap-2 rounded-full border border-action/15 bg-[#eef4ff] px-3 py-1.5 text-action/85">
+                        <span className="h-px w-5 bg-action/35" />
+                        <ArrowRight className="h-4 w-4" />
+                        <span className="h-px w-5 bg-action/35" />
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              ))}
+            </div>
+          )}
         </>
       )}
 
