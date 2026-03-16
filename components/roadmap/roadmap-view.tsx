@@ -1,6 +1,6 @@
 "use client";
 
-import { LayoutGrid, Plus } from "lucide-react";
+import { ArrowDown, ArrowRight, LayoutGrid, Plus } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { AppHeader } from "@/components/layout/app-header";
@@ -114,9 +114,37 @@ export function RoadmapView() {
             </div>
           ) : null}
 
+          <div className={`space-y-3 lg:hidden ${overview ? "hidden" : ""}`}>
+            {workspace.data.phases.map((phase, index) => (
+              <div key={phase.id} data-phase-id={phase.id} className="space-y-3">
+                <RoadmapPhaseColumn
+                  phase={phase}
+                  overview={false}
+                  mobileFullWidth
+                  tasks={workspace.data.tasks}
+                  onUpdatePhase={workspace.updatePhase}
+                  onDeletePhase={workspace.deletePhase}
+                  onCreateGoal={workspace.createGoal}
+                  onUpdateGoal={workspace.updateGoal}
+                  onDeleteGoal={workspace.deleteGoal}
+                  onSetGoalTasks={workspace.setGoalTasks}
+                />
+                {index < workspace.data.phases.length - 1 ? (
+                  <div className="flex items-center justify-center">
+                    <div className="flex items-center gap-2 rounded-full border border-action/20 bg-[#eef4ff] px-4 py-2 text-action">
+                      <span className="h-px w-6 bg-action/40" />
+                      <ArrowDown className="h-4 w-4" />
+                      <span className="h-px w-6 bg-action/40" />
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            ))}
+          </div>
+
           <div
             ref={roadmapScrollRef}
-            className={`subtle-scrollbar gap-4 overflow-x-auto pb-4 ${overview ? "hidden lg:flex" : "flex"}`}
+            className={`subtle-scrollbar hidden gap-4 overflow-x-auto pb-4 lg:flex ${overview ? "lg:flex" : ""}`}
           >
             {workspace.data.phases.map((phase, index) => (
               <div key={phase.id} data-phase-id={phase.id} className="flex items-stretch gap-4">
@@ -132,7 +160,13 @@ export function RoadmapView() {
                   onSetGoalTasks={workspace.setGoalTasks}
                 />
                 {index < workspace.data.phases.length - 1 ? (
-                  <div className="flex items-center text-3xl text-black/12">→</div>
+                  <div className="flex items-center">
+                    <div className="flex items-center gap-2 rounded-full border border-action/15 bg-[#eef4ff] px-3 py-1.5 text-action/85">
+                      <span className="h-px w-5 bg-action/35" />
+                      <ArrowRight className="h-4 w-4" />
+                      <span className="h-px w-5 bg-action/35" />
+                    </div>
+                  </div>
                 ) : null}
               </div>
             ))}

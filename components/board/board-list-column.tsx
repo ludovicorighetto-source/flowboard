@@ -50,7 +50,13 @@ export function BoardListColumn({
 
   return (
     <>
-      <div className={`panel flex h-full flex-col ${compact ? "w-[250px]" : "w-[320px]"} p-3`}>
+      <div
+        className={`panel flex h-full flex-col ${
+          compact
+            ? "w-[250px]"
+            : "w-[calc(100vw-2rem)] max-w-[360px] sm:w-[320px] sm:max-w-[320px]"
+        } p-3`}
+      >
         <div className="mb-3 flex items-center gap-2">
           <div className="min-w-0 flex-1">
             {overviewReadOnlyTitle ? (
@@ -124,7 +130,7 @@ export function BoardListColumn({
             <div
             ref={provided.innerRef}
             {...provided.droppableProps}
-            className={`subtle-scrollbar flex flex-1 flex-col gap-2 overflow-y-auto pr-1 ${
+            className={`subtle-scrollbar flex flex-1 flex-col gap-2 overflow-y-auto overflow-x-hidden pr-1 ${
               compact ? "min-h-[140px]" : "min-h-[180px]"
             }`}
           >

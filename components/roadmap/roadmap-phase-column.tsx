@@ -13,6 +13,7 @@ import type { RoadmapPhase, Task } from "@/types";
 export function RoadmapPhaseColumn({
   phase,
   overview,
+  mobileFullWidth = false,
   tasks,
   onUpdatePhase,
   onDeletePhase,
@@ -23,6 +24,7 @@ export function RoadmapPhaseColumn({
 }: {
   phase: RoadmapPhase;
   overview: boolean;
+  mobileFullWidth?: boolean;
   tasks: Task[];
   onUpdatePhase: (
     phaseId: string,
@@ -39,10 +41,17 @@ export function RoadmapPhaseColumn({
 }) {
   const [newGoalTitle, setNewGoalTitle] = useState("");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const widthClass = mobileFullWidth
+    ? overview
+      ? "w-full lg:w-[240px]"
+      : "w-full lg:w-[360px]"
+    : overview
+      ? "w-[240px]"
+      : "w-[calc(100vw-2rem)] max-w-[360px] sm:w-[360px]";
 
   return (
     <>
-      <div className={`panel shrink-0 ${overview ? "w-[240px]" : "w-[360px]"} p-4`}>
+      <div className={`panel ${mobileFullWidth ? "" : "shrink-0"} ${widthClass} p-4`}>
         <div className="mb-4 space-y-3">
           <div className="flex items-center justify-between gap-3">
             <Input

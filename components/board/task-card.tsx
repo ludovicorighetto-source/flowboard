@@ -26,12 +26,12 @@ export function TaskCard({
     <button
       type="button"
       onClick={onClick}
-      className="focus-ring panel flex w-full items-stretch gap-3 px-0 py-0 text-left transition hover:-translate-y-0.5 hover:shadow-soft"
+      className="focus-ring panel flex w-full items-stretch gap-3 overflow-hidden px-0 py-0 text-left transition hover:-translate-y-0.5 hover:shadow-soft"
     >
       <div className={`w-1 rounded-l-md ${listColorClass}`} />
-      <div className={`w-full ${compact ? "space-y-2 px-2.5 py-2.5" : "space-y-3 px-3 py-3 lg:px-4 lg:py-4"}`}>
+      <div className={`min-w-0 w-full ${compact ? "space-y-2 px-2.5 py-2.5" : "space-y-3 px-3 py-3 lg:px-4 lg:py-4"}`}>
         <div className="flex items-start justify-between gap-3">
-          <p className={`line-clamp-2 font-semibold text-ink ${compact ? "text-sm leading-5" : "text-sm leading-6"}`}>
+          <p className={`min-w-0 line-clamp-2 break-words font-semibold text-ink ${compact ? "text-sm leading-5" : "text-sm leading-6"}`}>
             {task.title}
           </p>
           {!compact ? <Badge className={priority.className}>{priority.label}</Badge> : null}
@@ -42,7 +42,7 @@ export function TaskCard({
             {task.task_labels.map(({ label }) => (
               <span
                 key={label.id}
-                className="rounded-full px-2 py-1 text-[11px] font-medium text-white"
+                className="max-w-full truncate rounded-full px-2 py-1 text-[11px] font-medium text-white"
                 style={{ backgroundColor: label.color }}
               >
                 {label.name}

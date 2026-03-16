@@ -36,8 +36,8 @@ export function RoadmapGoalCard({
     <>
       <div className={`rounded-panel border border-black/[0.06] bg-white ${overview ? "p-3" : "p-4"}`}>
         <div className="flex items-start justify-between gap-3">
-          <div className="space-y-1">
-            <p className={`font-semibold text-ink ${overview ? "text-xs" : "text-sm"}`}>{goal.title}</p>
+          <div className="min-w-0 space-y-1">
+            <p className={`break-words font-semibold text-ink ${overview ? "text-xs" : "text-sm"}`}>{goal.title}</p>
             <p className="text-xs text-muted">{linkedTasks.length} task collegati</p>
           </div>
           {overview ? null : (
