@@ -1,6 +1,7 @@
 "use client";
 
 import { Edit3, FolderOpen, Plus } from "lucide-react";
+import { useState } from "react";
 
 import { AppHeader } from "@/components/layout/app-header";
 import { useWorkspaceContext } from "@/components/layout/workspace-context";
@@ -8,10 +9,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { Textarea } from "@/components/ui/textarea";
-import { useState } from "react";
 
 export function WorkspacesView() {
   const {
+    currentProfile,
+    loading,
+    error,
     workspaces,
     activeWorkspace,
     createWorkspace,
@@ -24,16 +27,28 @@ export function WorkspacesView() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
 
+  const isAdmin = currentProfile.is_admin || currentProfile.email === "ludovico.righetto@gmail.com";
+
+  if (loading) {
+    return <div className="panel p-6 text-sm text-muted">Caricamento workspace...</div>;
+  }
+
   return (
     <div>
       <AppHeader
         title="I miei workspaces"
-        description="Gestisci i tuoi workspace e scegli in quale contesto lavorare."
+        description={
+          isAdmin
+            ? "Crea e gestisci i workspace. Gli accessi utenti si impostano dalla pagina Admin."
+            : "Visualizzi solo i workspace abilitati dal tuo amministratore."
+        }
         actions={
-          <Button onClick={() => setOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            Crea nuovo workspace
-          </Button>
+          isAdmin ? (
+            <Button onClick={() => setOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Crea nuovo workspace
+            </Button>
+          ) : null
         }
       />
 
@@ -59,7 +74,7 @@ export function WorkspacesView() {
                 </p>
               </div>
               <div className="flex gap-2">
-                {isEditing ? (
+                {isAdmin && isEditing ? (
                   <>
                     <Button
                       variant="secondary"
@@ -73,9 +88,9 @@ export function WorkspacesView() {
                     </Button>
                     <Button
                       className="flex-1"
-                      onClick={() => {
+                      onClick={async () => {
                         if (!editName.trim()) return;
-                        renameWorkspace(workspace.id, editName);
+                        await renameWorkspace(workspace.id, editName);
                         setEditingId(null);
                         setEditName("");
                       }}
@@ -83,7 +98,7 @@ export function WorkspacesView() {
                       Salva
                     </Button>
                   </>
-                ) : (
+                ) : isAdmin ? (
                   <Button
                     variant="ghost"
                     className="w-full justify-center gap-2"
@@ -95,7 +110,7 @@ export function WorkspacesView() {
                     <Edit3 className="h-4 w-4" />
                     Modifica nome
                   </Button>
-                )}
+                ) : null}
               </div>
               <Button
                 variant={isActive ? "primary" : "secondary"}
@@ -109,6 +124,20 @@ export function WorkspacesView() {
           );
         })}
       </div>
+
+      {error ? (
+        <div className="panel mt-4 border-rose-200 bg-rose-50/60 p-4 text-sm text-rose-700">
+          {error}
+        </div>
+      ) : null}
+
+      {workspaces.length === 0 ? (
+        <div className="panel mt-4 p-6 text-sm text-muted">
+          {isAdmin
+            ? "Nessun workspace disponibile. Crea il primo workspace."
+            : "Nessun workspace abilitato. Contatta l'amministratore."}
+        </div>
+      ) : null}
 
       <Modal open={open} onClose={() => setOpen(false)} title="Nuovo workspace" className="max-w-md">
         <div className="space-y-4 p-5">
@@ -134,9 +163,9 @@ export function WorkspacesView() {
               Annulla
             </Button>
             <Button
-              onClick={() => {
+              onClick={async () => {
                 if (!name.trim()) return;
-                createWorkspace(name.trim(), description.trim());
+                await createWorkspace(name.trim(), description.trim());
                 setName("");
                 setDescription("");
                 setOpen(false);

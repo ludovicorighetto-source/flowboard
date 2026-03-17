@@ -4,15 +4,18 @@ import { format, parseISO } from "date-fns";
 import { useMemo, useState } from "react";
 
 import { AppHeader } from "@/components/layout/app-header";
+import { useWorkspaceContext } from "@/components/layout/workspace-context";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { EmptyState } from "@/components/ui/empty-state";
 import { LoadingSkeleton } from "@/components/ui/loading-skeleton";
+import { Modal } from "@/components/ui/modal";
 import { useWorkspaceData } from "@/hooks/use-workspace-data";
 import { ADMIN_EMAIL } from "@/lib/utils/constants";
 
 export function AdminUsersTable() {
   const workspace = useWorkspaceData();
+  const workspaceContext = useWorkspaceContext();
   const userLabel = (workspace.currentUser?.full_name || workspace.currentUser?.email || "U")
     .slice(0, 2)
     .toUpperCase();
@@ -20,6 +23,11 @@ export function AdminUsersTable() {
     id: string;
     name: string;
   } | null>(null);
+  const [workspaceTarget, setWorkspaceTarget] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
+  const [workspaceDraft, setWorkspaceDraft] = useState<string[]>([]);
 
   const pendingUsers = useMemo(
     () => workspace.data.allUsers.filter((user) => !user.is_approved),
@@ -112,17 +120,31 @@ export function AdminUsersTable() {
                         Approva
                       </Button>
                     ) : (
-                      <Button
-                        variant="danger"
-                        onClick={() =>
-                          setRevokeTarget({
-                            id: user.id,
-                            name: user.full_name || user.email
-                          })
-                        }
-                      >
-                        Revoca accesso
-                      </Button>
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          variant="secondary"
+                          onClick={() => {
+                            setWorkspaceTarget({
+                              id: user.id,
+                              name: user.full_name || user.email
+                            });
+                            setWorkspaceDraft(workspaceContext.getUserWorkspaceIds(user.id));
+                          }}
+                        >
+                          Workspace abilitati
+                        </Button>
+                        <Button
+                          variant="danger"
+                          onClick={() =>
+                            setRevokeTarget({
+                              id: user.id,
+                              name: user.full_name || user.email
+                            })
+                          }
+                        >
+                          Revoca accesso
+                        </Button>
+                      </div>
                     )}
                   </td>
                 </tr>
@@ -187,6 +209,66 @@ export function AdminUsersTable() {
           setRevokeTarget(null);
         }}
       />
+
+      <Modal
+        open={Boolean(workspaceTarget)}
+        onClose={() => setWorkspaceTarget(null)}
+        title="Workspace abilitati"
+        className="max-w-xl"
+      >
+        <div className="space-y-4 p-5">
+          <p className="text-sm text-muted">
+            Utente: <span className="font-medium text-ink">{workspaceTarget?.name}</span>
+          </p>
+          <div className="max-h-[360px] space-y-2 overflow-y-auto rounded-xl border border-black/[0.06] p-3">
+            {workspaceContext.error ? (
+              <p className="text-sm text-rose-700">{workspaceContext.error}</p>
+            ) : workspaceContext.workspaces.length === 0 ? (
+              <p className="text-sm text-muted">Nessun workspace disponibile.</p>
+            ) : (
+              workspaceContext.workspaces.map((item) => {
+                const checked = workspaceDraft.includes(item.id);
+                return (
+                  <label
+                    key={item.id}
+                    className="flex min-h-12 cursor-pointer items-center justify-between rounded-control border border-black/[0.06] px-3 py-2"
+                  >
+                    <span className="text-sm text-ink">{item.name}</span>
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={(event) => {
+                        setWorkspaceDraft((current) =>
+                          event.target.checked
+                            ? [...current, item.id]
+                            : current.filter((workspaceId) => workspaceId !== item.id)
+                        );
+                      }}
+                    />
+                  </label>
+                );
+              })
+            )}
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="secondary" onClick={() => setWorkspaceTarget(null)}>
+              Annulla
+            </Button>
+            <Button
+              onClick={async () => {
+                if (!workspaceTarget) return;
+                await workspaceContext.setUserWorkspaceAccess(
+                  workspaceTarget.id,
+                  workspaceDraft
+                );
+                setWorkspaceTarget(null);
+              }}
+            >
+              Salva workspace
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </>
   );
 }

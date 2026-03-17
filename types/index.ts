@@ -18,8 +18,24 @@ export interface Profile {
   created_at: string;
 }
 
+export interface Workspace {
+  id: string;
+  name: string;
+  description: string | null;
+  created_by: string;
+  created_at: string;
+}
+
+export interface WorkspaceMember {
+  workspace_id: string;
+  user_id: string;
+  created_at: string;
+  user?: Profile;
+}
+
 export interface Label {
   id: string;
+  workspace_id: string;
   name: string;
   color: string;
   created_by: string;
@@ -28,6 +44,7 @@ export interface Label {
 
 export interface List {
   id: string;
+  workspace_id: string;
   title: string;
   position: number;
   created_at: string;
@@ -61,6 +78,7 @@ export interface TaskAttachment {
 
 export interface RoadmapPhase {
   id: string;
+  workspace_id: string;
   title: string;
   description: string | null;
   color: string;
@@ -71,6 +89,7 @@ export interface RoadmapPhase {
 
 export interface RoadmapGoal {
   id: string;
+  workspace_id: string;
   phase_id: string;
   title: string;
   description: string | null;
@@ -100,6 +119,7 @@ export interface TaskGoalRelation {
 
 export interface Task {
   id: string;
+  workspace_id: string;
   title: string;
   description: string | null;
   list_id: string;

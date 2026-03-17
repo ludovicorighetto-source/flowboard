@@ -20,6 +20,22 @@ create table if not exists public.profiles (
   created_at timestamptz not null default now()
 );
 
+create table if not exists public.workspaces (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  description text,
+  created_by uuid not null references public.profiles(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.workspace_members (
+  workspace_id uuid not null references public.workspaces(id) on delete cascade,
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (workspace_id, user_id)
+);
+
 create or replace function public.is_approved_user()
 returns boolean
 language sql
@@ -47,8 +63,33 @@ as $$
   );
 $$;
 
+create or replace function public.is_workspace_member(workspace uuid)
+returns boolean
+language sql
+stable
+as $$
+  select exists (
+    select 1
+    from public.workspace_members
+    where workspace_id = workspace
+      and user_id = auth.uid()
+  );
+$$;
+
+create or replace function public.can_access_workspace(workspace uuid)
+returns boolean
+language sql
+stable
+as $$
+  select public.is_admin_user() or public.is_workspace_member(workspace);
+$$;
+
+alter table public.workspaces
+  add column if not exists updated_at timestamptz not null default now();
+
 create table if not exists public.labels (
   id uuid primary key default gen_random_uuid(),
+  workspace_id uuid not null references public.workspaces(id) on delete cascade,
   name text not null,
   color text not null,
   created_by uuid not null references public.profiles(id) on delete restrict,
@@ -57,6 +98,7 @@ create table if not exists public.labels (
 
 create table if not exists public.lists (
   id uuid primary key default gen_random_uuid(),
+  workspace_id uuid not null references public.workspaces(id) on delete cascade,
   title text not null,
   position integer not null default 0,
   created_at timestamptz not null default now()
@@ -64,6 +106,7 @@ create table if not exists public.lists (
 
 create table if not exists public.tasks (
   id uuid primary key default gen_random_uuid(),
+  workspace_id uuid not null references public.workspaces(id) on delete cascade,
   title text not null,
   description text,
   list_id uuid not null references public.lists(id) on delete cascade,
@@ -121,6 +164,7 @@ create table if not exists public.task_attachments (
 
 create table if not exists public.roadmap_phases (
   id uuid primary key default gen_random_uuid(),
+  workspace_id uuid not null references public.workspaces(id) on delete cascade,
   title text not null,
   description text,
   color text not null default '#0071e3',
@@ -130,6 +174,7 @@ create table if not exists public.roadmap_phases (
 
 create table if not exists public.roadmap_goals (
   id uuid primary key default gen_random_uuid(),
+  workspace_id uuid not null references public.workspaces(id) on delete cascade,
   phase_id uuid not null references public.roadmap_phases(id) on delete cascade,
   title text not null,
   description text,
@@ -145,6 +190,12 @@ create table if not exists public.goal_tasks (
 );
 
 create index if not exists idx_lists_position on public.lists(position);
+create index if not exists idx_workspaces_created_by on public.workspaces(created_by);
+create index if not exists idx_workspace_members_user_id on public.workspace_members(user_id);
+create index if not exists idx_workspace_members_workspace_id on public.workspace_members(workspace_id);
+create index if not exists idx_labels_workspace_id on public.labels(workspace_id);
+create index if not exists idx_lists_workspace_id on public.lists(workspace_id);
+create index if not exists idx_tasks_workspace_id on public.tasks(workspace_id);
 create index if not exists idx_tasks_list_id on public.tasks(list_id);
 create index if not exists idx_tasks_position on public.tasks(position);
 create index if not exists idx_tasks_due_date on public.tasks(due_date);
@@ -152,6 +203,8 @@ create index if not exists idx_tasks_start_date on public.tasks(start_date);
 create index if not exists idx_checklists_task_id on public.checklists(task_id);
 create index if not exists idx_checklist_items_checklist_id on public.checklist_items(checklist_id);
 create index if not exists idx_task_attachments_task_id on public.task_attachments(task_id);
+create index if not exists idx_roadmap_phases_workspace_id on public.roadmap_phases(workspace_id);
+create index if not exists idx_roadmap_goals_workspace_id on public.roadmap_goals(workspace_id);
 create index if not exists idx_roadmap_goals_phase_id on public.roadmap_goals(phase_id);
 create index if not exists idx_goal_tasks_task_id on public.goal_tasks(task_id);
 
@@ -168,11 +221,27 @@ begin
 end;
 $$;
 
+create or replace function public.set_workspace_updated_at()
+returns trigger
+language plpgsql
+as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$;
+
 drop trigger if exists set_task_updated_at on public.tasks;
 create trigger set_task_updated_at
 before update on public.tasks
 for each row
 execute procedure public.set_task_updated_at();
+
+drop trigger if exists set_workspace_updated_at on public.workspaces;
+create trigger set_workspace_updated_at
+before update on public.workspaces
+for each row
+execute procedure public.set_workspace_updated_at();
 
 create or replace function public.handle_new_user()
 returns trigger
@@ -211,6 +280,8 @@ for each row
 execute procedure public.handle_new_user();
 
 alter table public.profiles enable row level security;
+alter table public.workspaces enable row level security;
+alter table public.workspace_members enable row level security;
 alter table public.labels enable row level security;
 alter table public.lists enable row level security;
 alter table public.tasks enable row level security;
@@ -247,88 +318,243 @@ create policy "labels_all_for_approved"
 on public.labels
 for all
 to authenticated
-using (public.is_approved_user())
-with check (public.is_approved_user());
+using (public.is_approved_user() and public.can_access_workspace(workspace_id))
+with check (public.is_approved_user() and public.can_access_workspace(workspace_id));
+
+drop policy if exists "workspaces_select" on public.workspaces;
+create policy "workspaces_select"
+on public.workspaces
+for select
+to authenticated
+using (
+  public.is_admin_user()
+  or exists (
+    select 1
+    from public.workspace_members wm
+    where wm.workspace_id = workspaces.id
+      and wm.user_id = auth.uid()
+  )
+);
+
+drop policy if exists "workspaces_insert_for_approved" on public.workspaces;
+create policy "workspaces_insert_for_approved"
+on public.workspaces
+for insert
+to authenticated
+with check (
+  public.is_approved_user()
+  and created_by = auth.uid()
+);
+
+drop policy if exists "workspaces_update_admin_or_creator" on public.workspaces;
+create policy "workspaces_update_admin_or_creator"
+on public.workspaces
+for update
+to authenticated
+using (public.is_admin_user() or created_by = auth.uid())
+with check (public.is_admin_user() or created_by = auth.uid());
+
+drop policy if exists "workspace_members_select" on public.workspace_members;
+create policy "workspace_members_select"
+on public.workspace_members
+for select
+to authenticated
+using (
+  public.is_admin_user()
+  or user_id = auth.uid()
+);
+
+drop policy if exists "workspace_members_insert_admin" on public.workspace_members;
+create policy "workspace_members_insert_admin"
+on public.workspace_members
+for insert
+to authenticated
+with check (public.is_admin_user());
+
+drop policy if exists "workspace_members_delete_admin" on public.workspace_members;
+create policy "workspace_members_delete_admin"
+on public.workspace_members
+for delete
+to authenticated
+using (public.is_admin_user());
 
 drop policy if exists "lists_all_for_approved" on public.lists;
 create policy "lists_all_for_approved"
 on public.lists
 for all
 to authenticated
-using (public.is_approved_user())
-with check (public.is_approved_user());
+using (public.is_approved_user() and public.can_access_workspace(workspace_id))
+with check (public.is_approved_user() and public.can_access_workspace(workspace_id));
 
 drop policy if exists "tasks_all_for_approved" on public.tasks;
 create policy "tasks_all_for_approved"
 on public.tasks
 for all
 to authenticated
-using (public.is_approved_user())
-with check (public.is_approved_user());
+using (public.is_approved_user() and public.can_access_workspace(workspace_id))
+with check (public.is_approved_user() and public.can_access_workspace(workspace_id));
 
 drop policy if exists "task_labels_all_for_approved" on public.task_labels;
 create policy "task_labels_all_for_approved"
 on public.task_labels
 for all
 to authenticated
-using (public.is_approved_user())
-with check (public.is_approved_user());
+using (
+  public.is_approved_user()
+  and exists (
+    select 1
+    from public.tasks t
+    where t.id = task_labels.task_id
+      and public.can_access_workspace(t.workspace_id)
+  )
+)
+with check (
+  public.is_approved_user()
+  and exists (
+    select 1
+    from public.tasks t
+    where t.id = task_labels.task_id
+      and public.can_access_workspace(t.workspace_id)
+  )
+);
 
 drop policy if exists "task_assignees_all_for_approved" on public.task_assignees;
 create policy "task_assignees_all_for_approved"
 on public.task_assignees
 for all
 to authenticated
-using (public.is_approved_user())
-with check (public.is_approved_user());
+using (
+  public.is_approved_user()
+  and exists (
+    select 1
+    from public.tasks t
+    where t.id = task_assignees.task_id
+      and public.can_access_workspace(t.workspace_id)
+  )
+)
+with check (
+  public.is_approved_user()
+  and exists (
+    select 1
+    from public.tasks t
+    where t.id = task_assignees.task_id
+      and public.can_access_workspace(t.workspace_id)
+  )
+);
 
 drop policy if exists "checklists_all_for_approved" on public.checklists;
 create policy "checklists_all_for_approved"
 on public.checklists
 for all
 to authenticated
-using (public.is_approved_user())
-with check (public.is_approved_user());
+using (
+  public.is_approved_user()
+  and exists (
+    select 1
+    from public.tasks t
+    where t.id = checklists.task_id
+      and public.can_access_workspace(t.workspace_id)
+  )
+)
+with check (
+  public.is_approved_user()
+  and exists (
+    select 1
+    from public.tasks t
+    where t.id = checklists.task_id
+      and public.can_access_workspace(t.workspace_id)
+  )
+);
 
 drop policy if exists "checklist_items_all_for_approved" on public.checklist_items;
 create policy "checklist_items_all_for_approved"
 on public.checklist_items
 for all
 to authenticated
-using (public.is_approved_user())
-with check (public.is_approved_user());
+using (
+  public.is_approved_user()
+  and exists (
+    select 1
+    from public.checklists c
+    join public.tasks t on t.id = c.task_id
+    where c.id = checklist_items.checklist_id
+      and public.can_access_workspace(t.workspace_id)
+  )
+)
+with check (
+  public.is_approved_user()
+  and exists (
+    select 1
+    from public.checklists c
+    join public.tasks t on t.id = c.task_id
+    where c.id = checklist_items.checklist_id
+      and public.can_access_workspace(t.workspace_id)
+  )
+);
 
 drop policy if exists "task_attachments_all_for_approved" on public.task_attachments;
 create policy "task_attachments_all_for_approved"
 on public.task_attachments
 for all
 to authenticated
-using (public.is_approved_user())
-with check (public.is_approved_user());
+using (
+  public.is_approved_user()
+  and exists (
+    select 1
+    from public.tasks t
+    where t.id = task_attachments.task_id
+      and public.can_access_workspace(t.workspace_id)
+  )
+)
+with check (
+  public.is_approved_user()
+  and exists (
+    select 1
+    from public.tasks t
+    where t.id = task_attachments.task_id
+      and public.can_access_workspace(t.workspace_id)
+  )
+);
 
 drop policy if exists "roadmap_phases_all_for_approved" on public.roadmap_phases;
 create policy "roadmap_phases_all_for_approved"
 on public.roadmap_phases
 for all
 to authenticated
-using (public.is_approved_user())
-with check (public.is_approved_user());
+using (public.is_approved_user() and public.can_access_workspace(workspace_id))
+with check (public.is_approved_user() and public.can_access_workspace(workspace_id));
 
 drop policy if exists "roadmap_goals_all_for_approved" on public.roadmap_goals;
 create policy "roadmap_goals_all_for_approved"
 on public.roadmap_goals
 for all
 to authenticated
-using (public.is_approved_user())
-with check (public.is_approved_user());
+using (public.is_approved_user() and public.can_access_workspace(workspace_id))
+with check (public.is_approved_user() and public.can_access_workspace(workspace_id));
 
 drop policy if exists "goal_tasks_all_for_approved" on public.goal_tasks;
 create policy "goal_tasks_all_for_approved"
 on public.goal_tasks
 for all
 to authenticated
-using (public.is_approved_user())
-with check (public.is_approved_user());
+using (
+  public.is_approved_user()
+  and exists (
+    select 1
+    from public.roadmap_goals g
+    where g.id = goal_tasks.goal_id
+      and public.can_access_workspace(g.workspace_id)
+  )
+)
+with check (
+  public.is_approved_user()
+  and exists (
+    select 1
+    from public.roadmap_goals g
+    where g.id = goal_tasks.goal_id
+      and public.can_access_workspace(g.workspace_id)
+  )
+);
 
 insert into storage.buckets (id, name, public)
 values ('task-attachments', 'task-attachments', true)

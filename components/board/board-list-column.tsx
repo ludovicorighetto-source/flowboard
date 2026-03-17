@@ -152,7 +152,12 @@ export function BoardListColumn({
             }`}
           >
               {tasks.map((task, index) => (
-                <Draggable key={task.id} draggableId={task.id} index={index}>
+                <Draggable
+                  key={task.id}
+                  draggableId={task.id}
+                  index={index}
+                  disableInteractiveElementBlocking
+                >
                   {(draggableProvided) => (
                     <div
                       ref={draggableProvided.innerRef}

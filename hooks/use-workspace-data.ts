@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 
+import { useWorkspaceContext } from "@/components/layout/workspace-context";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { STORAGE_BUCKET } from "@/lib/utils/constants";
 import type { BoardData, Label, Priority, Profile, RoadmapPhase, Task } from "@/types";
@@ -30,6 +31,8 @@ const PHASE_SELECT = `
 `;
 
 export function useWorkspaceData() {
+  const { activeWorkspace } = useWorkspaceContext();
+  const activeWorkspaceId = activeWorkspace?.id || null;
   const [data, setData] = useState<BoardData>({
     lists: [],
     tasks: [],
@@ -57,10 +60,34 @@ export function useWorkspaceData() {
     ] = await Promise.all([
       supabase.auth.getUser(),
       supabase.from("profiles").select("*").order("created_at", { ascending: true }),
-      supabase.from("lists").select("*").order("position", { ascending: true }),
-      supabase.from("tasks").select(TASK_SELECT).order("position", { ascending: true }),
-      supabase.from("labels").select("*").order("created_at", { ascending: true }),
-      supabase.from("roadmap_phases").select(PHASE_SELECT).order("position", { ascending: true })
+      activeWorkspaceId
+        ? supabase
+            .from("lists")
+            .select("*")
+            .eq("workspace_id", activeWorkspaceId)
+            .order("position", { ascending: true })
+        : Promise.resolve({ data: [], error: null }),
+      activeWorkspaceId
+        ? supabase
+            .from("tasks")
+            .select(TASK_SELECT)
+            .eq("workspace_id", activeWorkspaceId)
+            .order("position", { ascending: true })
+        : Promise.resolve({ data: [], error: null }),
+      activeWorkspaceId
+        ? supabase
+            .from("labels")
+            .select("*")
+            .eq("workspace_id", activeWorkspaceId)
+            .order("created_at", { ascending: true })
+        : Promise.resolve({ data: [], error: null }),
+      activeWorkspaceId
+        ? supabase
+            .from("roadmap_phases")
+            .select(PHASE_SELECT)
+            .eq("workspace_id", activeWorkspaceId)
+            .order("position", { ascending: true })
+        : Promise.resolve({ data: [], error: null })
     ]);
 
     const currentUserId = authResult.data.user?.id;
@@ -126,7 +153,7 @@ export function useWorkspaceData() {
     });
 
     setLoading(false);
-  }, []);
+  }, [activeWorkspaceId]);
 
   useEffect(() => {
     void loadData();
@@ -147,10 +174,12 @@ export function useWorkspaceData() {
   }
 
   async function createList(title: string) {
+    if (!activeWorkspaceId) return null;
     const supabase = createSupabaseBrowserClient();
     const { data: inserted } = await supabase
       .from("lists")
       .insert({
+        workspace_id: activeWorkspaceId,
         title,
         position: data.lists.length
       })
@@ -181,12 +210,14 @@ export function useWorkspaceData() {
   }
 
   async function createTask(listId: string, title: string) {
+    if (!activeWorkspaceId) return null;
     const supabase = createSupabaseBrowserClient();
     const listTasks = data.tasks.filter((task) => task.list_id === listId);
 
     const result = await supabase
       .from("tasks")
       .insert({
+        workspace_id: activeWorkspaceId,
         title,
         list_id: listId,
         position: listTasks.length,
@@ -229,26 +260,62 @@ export function useWorkspaceData() {
     destinationTaskIds: string[]
   ) {
     const supabase = createSupabaseBrowserClient();
-    await withRefresh(async () => {
-      await Promise.all([
-        ...sourceTaskIds.map((id, index) =>
-          supabase
-            .from("tasks")
-            .update({ position: index })
-            .eq("id", id)
-        ),
-        ...destinationTaskIds.map((id, index) =>
-          supabase
-            .from("tasks")
-            .update({ list_id: destinationListId, position: index })
-            .eq("id", id)
-        ),
-        supabase
-          .from("tasks")
-          .update({ list_id: destinationListId, position: destinationTaskIds.indexOf(taskId) })
-          .eq("id", taskId)
-      ]);
-    });
+    const snapshot = data.tasks;
+    const movingTask = snapshot.find((task) => task.id === taskId);
+    const sourceListId = movingTask?.list_id || destinationListId;
+    const isCrossListMove = sourceListId !== destinationListId;
+
+    // Optimistic update: render the new ordering immediately before persisting.
+    setData((current) => ({
+      ...current,
+      tasks: current.tasks.map((task) => {
+        const sourceIndex = sourceTaskIds.indexOf(task.id);
+        if (sourceIndex >= 0) {
+          return {
+            ...task,
+            list_id: sourceListId,
+            position: sourceIndex
+          };
+        }
+
+        const destinationIndex = destinationTaskIds.indexOf(task.id);
+        if (destinationIndex >= 0) {
+          return {
+            ...task,
+            list_id: destinationListId,
+            position: destinationIndex
+          };
+        }
+
+        return task;
+      })
+    }));
+
+    try {
+      if (isCrossListMove) {
+        await Promise.all([
+          ...sourceTaskIds.map((id, index) =>
+            supabase.from("tasks").update({ position: index }).eq("id", id)
+          ),
+          ...destinationTaskIds.map((id, index) =>
+            supabase
+              .from("tasks")
+              .update({ list_id: destinationListId, position: index })
+              .eq("id", id)
+          )
+        ]);
+      } else {
+        await Promise.all(
+          destinationTaskIds.map((id, index) =>
+            supabase.from("tasks").update({ position: index }).eq("id", id)
+          )
+        );
+      }
+    } catch (error) {
+      // Roll back local ordering if persistence fails.
+      setData((current) => ({ ...current, tasks: snapshot }));
+      throw error;
+    }
   }
 
   async function createChecklist(taskId: string, title: string) {
@@ -328,10 +395,12 @@ export function useWorkspaceData() {
   }
 
   async function createLabel(name: string, color: string) {
+    if (!activeWorkspaceId) return null;
     const supabase = createSupabaseBrowserClient();
     const result = await supabase
       .from("labels")
       .insert({
+        workspace_id: activeWorkspaceId,
         name,
         color,
         created_by: currentUser?.id
@@ -466,9 +535,11 @@ export function useWorkspaceData() {
   }
 
   async function createPhase(title: string, color: string) {
+    if (!activeWorkspaceId) return;
     const supabase = createSupabaseBrowserClient();
     await withRefresh(() =>
       supabase.from("roadmap_phases").insert({
+        workspace_id: activeWorkspaceId,
         title,
         color,
         position: data.phases.length
@@ -490,10 +561,12 @@ export function useWorkspaceData() {
   }
 
   async function createGoal(phaseId: string, title: string) {
+    if (!activeWorkspaceId) return;
     const supabase = createSupabaseBrowserClient();
     const goals = data.phases.find((phase) => phase.id === phaseId)?.roadmap_goals || [];
     await withRefresh(() =>
       supabase.from("roadmap_goals").insert({
+        workspace_id: activeWorkspaceId,
         phase_id: phaseId,
         title,
         position: goals.length

@@ -1,22 +1,26 @@
 "use client";
 
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 
-import type { Profile } from "@/types";
-
-export type WorkspaceItem = {
-  id: string;
-  name: string;
-  description: string;
-  createdAt: string;
-};
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import type { Profile, Workspace, WorkspaceMember } from "@/types";
 
 type WorkspaceContextValue = {
-  workspaces: WorkspaceItem[];
-  activeWorkspace: WorkspaceItem | null;
-  createWorkspace: (name: string, description?: string) => WorkspaceItem;
-  renameWorkspace: (workspaceId: string, name: string) => void;
+  currentProfile: Profile;
+  loading: boolean;
+  error: string | null;
+  workspaces: Workspace[];
+  activeWorkspace: Workspace | null;
+  allApprovedUsers: Profile[];
+  membersByWorkspace: Record<string, WorkspaceMember[]>;
+  createWorkspace: (name: string, description?: string) => Promise<Workspace | null>;
+  renameWorkspace: (workspaceId: string, name: string) => Promise<void>;
   setActiveWorkspace: (workspaceId: string) => void;
+  addMember: (workspaceId: string, userId: string) => Promise<void>;
+  removeMember: (workspaceId: string, userId: string) => Promise<void>;
+  setUserWorkspaceAccess: (userId: string, workspaceIds: string[]) => Promise<void>;
+  getUserWorkspaceIds: (userId: string) => string[];
+  refresh: () => Promise<void>;
 };
 
 const WorkspaceContext = createContext<WorkspaceContextValue | null>(null);
@@ -32,84 +36,200 @@ export function WorkspaceProvider({
   profile: Profile;
   children: React.ReactNode;
 }) {
-  const [workspaces, setWorkspaces] = useState<WorkspaceItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [activeWorkspaceId, setActiveWorkspaceId] = useState<string | null>(null);
-  const [ready, setReady] = useState(false);
+  const [allApprovedUsers, setAllApprovedUsers] = useState<Profile[]>([]);
+  const [membersByWorkspace, setMembersByWorkspace] = useState<Record<string, WorkspaceMember[]>>({});
 
-  useEffect(() => {
-    const workspacesKey = getStorageKey(profile.id, "workspaces");
+  const loadData = useCallback(async () => {
+    const supabase = createSupabaseBrowserClient();
+    setLoading(true);
+    setError(null);
+    const isAdmin =
+      profile.is_admin || profile.email === "ludovico.righetto@gmail.com";
+
+    const [{ data: workspaceRows, error: workspaceError }, { data: memberRows, error: memberError }, { data: approvedUsers, error: usersError }] = await Promise.all([
+      supabase.from("workspaces").select("*").order("created_at", { ascending: true }),
+      supabase
+        .from("workspace_members")
+        .select("workspace_id, user_id, created_at, user:profiles(*)"),
+      supabase
+        .from("profiles")
+        .select("*")
+        .eq("is_approved", true)
+        .order("created_at", { ascending: true })
+    ]);
+
+    if (workspaceError || memberError || usersError) {
+      setError(
+        workspaceError?.message ||
+          memberError?.message ||
+          usersError?.message ||
+          "Errore caricamento workspace"
+      );
+      setLoading(false);
+      return;
+    }
+
+    let workspaceList = (workspaceRows || []) as Workspace[];
+    const memberships = (memberRows || []) as WorkspaceMember[];
+    const byWorkspace = memberships.reduce<Record<string, WorkspaceMember[]>>((acc, member) => {
+      acc[member.workspace_id] = [...(acc[member.workspace_id] || []), member];
+      return acc;
+    }, {});
+
+    if (workspaceList.length === 0 && isAdmin) {
+      const { data: created, error: createDefaultError } = await supabase
+        .from("workspaces")
+        .insert({
+          name: "Workspace principale",
+          description: "Workspace iniziale",
+          created_by: profile.id
+        })
+        .select("*")
+        .single<Workspace>();
+
+      if (createDefaultError) {
+        setError(createDefaultError.message);
+        setLoading(false);
+        return;
+      }
+
+      if (created) {
+        await supabase
+          .from("workspace_members")
+          .upsert(
+            { workspace_id: created.id, user_id: profile.id },
+            { onConflict: "workspace_id,user_id" }
+          );
+        workspaceList = [created];
+      }
+    }
+
     const activeKey = getStorageKey(profile.id, "activeWorkspace");
-
-    const stored = window.localStorage.getItem(workspacesKey);
-    const parsed = stored ? (JSON.parse(stored) as WorkspaceItem[]) : [];
-
-    const initialWorkspaces =
-      parsed.length > 0
-        ? parsed
-        : [
-            {
-              id: crypto.randomUUID(),
-              name: "Workspace principale",
-              description: "Workspace iniziale",
-              createdAt: new Date().toISOString()
-            }
-          ];
-
     const storedActive = window.localStorage.getItem(activeKey);
-    const initialActiveId =
-      storedActive && initialWorkspaces.some((workspace) => workspace.id === storedActive)
+    const nextActive =
+      storedActive && workspaceList.some((workspace) => workspace.id === storedActive)
         ? storedActive
-        : initialWorkspaces[0].id;
+        : workspaceList[0]?.id || null;
 
-    setWorkspaces(initialWorkspaces);
-    setActiveWorkspaceId(initialActiveId);
-    setReady(true);
+    if (nextActive) {
+      window.localStorage.setItem(activeKey, nextActive);
+    } else {
+      window.localStorage.removeItem(activeKey);
+    }
 
-    window.localStorage.setItem(workspacesKey, JSON.stringify(initialWorkspaces));
-    window.localStorage.setItem(activeKey, initialActiveId);
+    setWorkspaces(workspaceList);
+    setMembersByWorkspace(byWorkspace);
+    setAllApprovedUsers((approvedUsers || []) as Profile[]);
+    setActiveWorkspaceId(nextActive);
+    setLoading(false);
   }, [profile.id]);
 
-  function persist(nextWorkspaces: WorkspaceItem[], nextActiveId: string) {
-    const workspacesKey = getStorageKey(profile.id, "workspaces");
-    const activeKey = getStorageKey(profile.id, "activeWorkspace");
-    window.localStorage.setItem(workspacesKey, JSON.stringify(nextWorkspaces));
-    window.localStorage.setItem(activeKey, nextActiveId);
+  useEffect(() => {
+    void loadData();
+  }, [loadData]);
+
+  async function createWorkspace(name: string, description = "") {
+    const supabase = createSupabaseBrowserClient();
+    const nextName = name.trim();
+    if (!nextName) return null;
+
+    const isAdmin =
+      profile.is_admin || profile.email === "ludovico.righetto@gmail.com";
+    if (!isAdmin) return null;
+    setError(null);
+
+    const { data: created, error: createError } = await supabase
+      .from("workspaces")
+      .insert({
+        name: nextName,
+        description: description.trim() || null,
+        created_by: profile.id
+      })
+      .select("*")
+      .single<Workspace>();
+
+    if (createError || !created) {
+      setError(createError?.message || "Impossibile creare workspace");
+      return null;
+    }
+
+    if (created) {
+      await supabase
+        .from("workspace_members")
+        .upsert(
+          { workspace_id: created.id, user_id: profile.id },
+          { onConflict: "workspace_id,user_id" }
+        );
+      const activeKey = getStorageKey(profile.id, "activeWorkspace");
+      window.localStorage.setItem(activeKey, created.id);
+      setActiveWorkspaceId(created.id);
+    }
+
+    await loadData();
+    return created || null;
   }
 
-  useEffect(() => {
-    if (!ready) return;
-    if (!activeWorkspaceId) return;
-    persist(workspaces, activeWorkspaceId);
-  }, [ready, workspaces, activeWorkspaceId]);
-
-  function createWorkspace(name: string, description = "") {
-    const created: WorkspaceItem = {
-      id: crypto.randomUUID(),
-      name,
-      description,
-      createdAt: new Date().toISOString()
-    };
-    setWorkspaces((current) => [...current, created]);
-    setActiveWorkspaceId(created.id);
-    return created;
+  async function renameWorkspace(workspaceId: string, name: string) {
+    const supabase = createSupabaseBrowserClient();
+    const nextName = name.trim();
+    if (!nextName) return;
+    const { error: renameError } = await supabase
+      .from("workspaces")
+      .update({ name: nextName })
+      .eq("id", workspaceId);
+    if (renameError) {
+      setError(renameError.message);
+      return;
+    }
+    await loadData();
   }
 
   function setActiveWorkspace(workspaceId: string) {
-    if (!workspaces.some((workspace) => workspace.id === workspaceId)) {
-      return;
-    }
+    if (!workspaces.some((workspace) => workspace.id === workspaceId)) return;
+    const activeKey = getStorageKey(profile.id, "activeWorkspace");
+    window.localStorage.setItem(activeKey, workspaceId);
     setActiveWorkspaceId(workspaceId);
   }
 
-  function renameWorkspace(workspaceId: string, name: string) {
-    const nextName = name.trim();
-    if (!nextName) return;
+  async function addMember(workspaceId: string, userId: string) {
+    const supabase = createSupabaseBrowserClient();
+    await supabase.from("workspace_members").insert({ workspace_id: workspaceId, user_id: userId });
+    await loadData();
+  }
 
-    setWorkspaces((current) =>
-      current.map((workspace) =>
-        workspace.id === workspaceId ? { ...workspace, name: nextName } : workspace
-      )
-    );
+  async function removeMember(workspaceId: string, userId: string) {
+    const supabase = createSupabaseBrowserClient();
+    await supabase
+      .from("workspace_members")
+      .delete()
+      .eq("workspace_id", workspaceId)
+      .eq("user_id", userId);
+    await loadData();
+  }
+
+  function getUserWorkspaceIds(userId: string) {
+    return Object.entries(membersByWorkspace)
+      .filter(([, members]) => members.some((member) => member.user_id === userId))
+      .map(([workspaceId]) => workspaceId);
+  }
+
+  async function setUserWorkspaceAccess(userId: string, workspaceIds: string[]) {
+    const supabase = createSupabaseBrowserClient();
+    await supabase.from("workspace_members").delete().eq("user_id", userId);
+
+    const rows = workspaceIds.map((workspaceId) => ({
+      workspace_id: workspaceId,
+      user_id: userId
+    }));
+    if (rows.length > 0) {
+      await supabase.from("workspace_members").insert(rows);
+    }
+
+    await loadData();
   }
 
   const value = useMemo<WorkspaceContextValue>(() => {
@@ -117,13 +237,23 @@ export function WorkspaceProvider({
       workspaces.find((workspace) => workspace.id === activeWorkspaceId) || null;
 
     return {
+      currentProfile: profile,
+      loading,
+      error,
       workspaces,
       activeWorkspace,
+      allApprovedUsers,
+      membersByWorkspace,
       createWorkspace,
       renameWorkspace,
-      setActiveWorkspace
+      setActiveWorkspace,
+      addMember,
+      removeMember,
+      setUserWorkspaceAccess,
+      getUserWorkspaceIds,
+      refresh: loadData
     };
-  }, [activeWorkspaceId, workspaces]);
+  }, [activeWorkspaceId, allApprovedUsers, error, loadData, loading, membersByWorkspace, profile, workspaces]);
 
   return <WorkspaceContext.Provider value={value}>{children}</WorkspaceContext.Provider>;
 }
@@ -132,16 +262,28 @@ export function useWorkspaceContext() {
   const context = useContext(WorkspaceContext);
   if (!context) {
     return {
+      currentProfile: {
+        id: "",
+        email: "",
+        full_name: null,
+        is_approved: false,
+        is_admin: false,
+        created_at: ""
+      },
+      loading: false,
+      error: null,
       workspaces: [],
       activeWorkspace: null,
-      createWorkspace: () => ({
-        id: "",
-        name: "",
-        description: "",
-        createdAt: ""
-      }),
-      renameWorkspace: () => {},
-      setActiveWorkspace: () => {}
+      allApprovedUsers: [],
+      membersByWorkspace: {},
+      createWorkspace: async () => null,
+      renameWorkspace: async () => {},
+      setActiveWorkspace: () => {},
+      addMember: async () => {},
+      removeMember: async () => {},
+      setUserWorkspaceAccess: async () => {},
+      getUserWorkspaceIds: () => [],
+      refresh: async () => {}
     };
   }
   return context;
