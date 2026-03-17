@@ -3,6 +3,23 @@
 
 create extension if not exists pgcrypto;
 
+create or replace function public.is_admin_user()
+returns boolean
+language sql
+stable
+as $$
+  select exists (
+    select 1
+    from public.profiles
+    where id = auth.uid()
+      and is_approved = true
+      and (
+        is_admin = true
+        or lower(email) = 'ludovico.righetto@gmail.com'
+      )
+  );
+$$;
+
 create table if not exists public.workspaces (
   id uuid primary key default gen_random_uuid(),
   name text not null,

@@ -58,8 +58,11 @@ as $$
     select 1
     from public.profiles
     where id = auth.uid()
-      and is_admin = true
       and is_approved = true
+      and (
+        is_admin = true
+        or lower(email) = 'ludovico.righetto@gmail.com'
+      )
   );
 $$;
 

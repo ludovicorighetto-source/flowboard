@@ -200,6 +200,17 @@ export function WorkspaceProvider({
     }
 
     setError(null);
+    const { data: targetWorkspace } = await supabase
+      .from("workspaces")
+      .select("id")
+      .eq("id", workspaceId)
+      .maybeSingle<{ id: string }>();
+
+    if (!targetWorkspace) {
+      setError("Workspace non trovato o non accessibile.");
+      return;
+    }
+
     const { data: deletedRows, error: deleteError } = await supabase
       .from("workspaces")
       .delete()
