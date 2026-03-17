@@ -1,11 +1,12 @@
 "use client";
 
-import { Edit3, FolderOpen, Plus } from "lucide-react";
+import { Edit3, FolderOpen, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 import { AppHeader } from "@/components/layout/app-header";
 import { useWorkspaceContext } from "@/components/layout/workspace-context";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { Textarea } from "@/components/ui/textarea";
@@ -19,6 +20,7 @@ export function WorkspacesView() {
     activeWorkspace,
     createWorkspace,
     renameWorkspace,
+    deleteWorkspace,
     setActiveWorkspace
   } = useWorkspaceContext();
   const [open, setOpen] = useState(false);
@@ -26,6 +28,7 @@ export function WorkspacesView() {
   const [description, setDescription] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
 
   const isAdmin = currentProfile.is_admin || currentProfile.email === "ludovico.righetto@gmail.com";
 
@@ -99,17 +102,31 @@ export function WorkspacesView() {
                     </Button>
                   </>
                 ) : isAdmin ? (
-                  <Button
-                    variant="ghost"
-                    className="w-full justify-center gap-2"
-                    onClick={() => {
-                      setEditingId(workspace.id);
-                      setEditName(workspace.name);
-                    }}
-                  >
-                    <Edit3 className="h-4 w-4" />
-                    Modifica nome
-                  </Button>
+                  <>
+                    <Button
+                      variant="ghost"
+                      className="flex-1 justify-center gap-2"
+                      onClick={() => {
+                        setEditingId(workspace.id);
+                        setEditName(workspace.name);
+                      }}
+                    >
+                      <Edit3 className="h-4 w-4" />
+                      Modifica nome
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      className="min-h-12 min-w-12 px-3 text-rose-600 hover:bg-rose-50 hover:text-rose-700"
+                      onClick={() =>
+                        setDeleteTarget({
+                          id: workspace.id,
+                          name: workspace.name
+                        })
+                      }
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </>
                 ) : null}
               </div>
               <Button
@@ -176,6 +193,23 @@ export function WorkspacesView() {
           </div>
         </div>
       </Modal>
+
+      <ConfirmDialog
+        open={Boolean(deleteTarget)}
+        onClose={() => setDeleteTarget(null)}
+        title="Eliminare workspace?"
+        description={
+          deleteTarget
+            ? `Sei sicuro di voler eliminare il workspace "${deleteTarget.name}"?`
+            : "Sei sicuro di voler eliminare questo workspace?"
+        }
+        confirmLabel="Elimina"
+        onConfirm={async () => {
+          if (!deleteTarget) return;
+          await deleteWorkspace(deleteTarget.id);
+          setDeleteTarget(null);
+        }}
+      />
     </div>
   );
 }

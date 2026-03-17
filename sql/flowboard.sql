@@ -354,6 +354,13 @@ to authenticated
 using (public.is_admin_user() or created_by = auth.uid())
 with check (public.is_admin_user() or created_by = auth.uid());
 
+drop policy if exists "workspaces_delete_admin_or_creator" on public.workspaces;
+create policy "workspaces_delete_admin_or_creator"
+on public.workspaces
+for delete
+to authenticated
+using (public.is_admin_user() or created_by = auth.uid());
+
 drop policy if exists "workspace_members_select" on public.workspace_members;
 create policy "workspace_members_select"
 on public.workspace_members

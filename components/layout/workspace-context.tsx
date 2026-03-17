@@ -15,6 +15,7 @@ type WorkspaceContextValue = {
   membersByWorkspace: Record<string, WorkspaceMember[]>;
   createWorkspace: (name: string, description?: string) => Promise<Workspace | null>;
   renameWorkspace: (workspaceId: string, name: string) => Promise<void>;
+  deleteWorkspace: (workspaceId: string) => Promise<void>;
   setActiveWorkspace: (workspaceId: string) => void;
   addMember: (workspaceId: string, userId: string) => Promise<void>;
   removeMember: (workspaceId: string, userId: string) => Promise<void>;
@@ -188,6 +189,36 @@ export function WorkspaceProvider({
     await loadData();
   }
 
+  async function deleteWorkspace(workspaceId: string) {
+    const supabase = createSupabaseBrowserClient();
+    const isAdmin =
+      profile.is_admin || profile.email === "ludovico.righetto@gmail.com";
+    if (!isAdmin) return;
+    if (workspaces.length <= 1) {
+      setError("Devi mantenere almeno un workspace.");
+      return;
+    }
+
+    setError(null);
+    const { data: deletedRows, error: deleteError } = await supabase
+      .from("workspaces")
+      .delete()
+      .eq("id", workspaceId)
+      .select("id");
+
+    if (deleteError) {
+      setError(deleteError.message);
+      return;
+    }
+
+    if (!deletedRows || deletedRows.length === 0) {
+      setError("Eliminazione non riuscita: permessi insufficienti o workspace non trovato.");
+      return;
+    }
+
+    await loadData();
+  }
+
   function setActiveWorkspace(workspaceId: string) {
     if (!workspaces.some((workspace) => workspace.id === workspaceId)) return;
     const activeKey = getStorageKey(profile.id, "activeWorkspace");
@@ -246,6 +277,7 @@ export function WorkspaceProvider({
       membersByWorkspace,
       createWorkspace,
       renameWorkspace,
+      deleteWorkspace,
       setActiveWorkspace,
       addMember,
       removeMember,
@@ -278,6 +310,7 @@ export function useWorkspaceContext() {
       membersByWorkspace: {},
       createWorkspace: async () => null,
       renameWorkspace: async () => {},
+      deleteWorkspace: async () => {},
       setActiveWorkspace: () => {},
       addMember: async () => {},
       removeMember: async () => {},

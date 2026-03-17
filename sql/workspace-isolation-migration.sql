@@ -193,6 +193,70 @@ as $$
     );
 $$;
 
+alter table public.workspaces enable row level security;
+alter table public.workspace_members enable row level security;
+
+drop policy if exists "workspaces_select" on public.workspaces;
+create policy "workspaces_select"
+on public.workspaces
+for select
+to authenticated
+using (
+  public.is_admin_user()
+  or exists (
+    select 1
+    from public.workspace_members wm
+    where wm.workspace_id = workspaces.id
+      and wm.user_id = auth.uid()
+  )
+);
+
+drop policy if exists "workspaces_insert_for_approved" on public.workspaces;
+create policy "workspaces_insert_for_approved"
+on public.workspaces
+for insert
+to authenticated
+with check (
+  public.is_approved_user()
+  and created_by = auth.uid()
+);
+
+drop policy if exists "workspaces_update_admin_or_creator" on public.workspaces;
+create policy "workspaces_update_admin_or_creator"
+on public.workspaces
+for update
+to authenticated
+using (public.is_admin_user() or created_by = auth.uid())
+with check (public.is_admin_user() or created_by = auth.uid());
+
+drop policy if exists "workspaces_delete_admin_or_creator" on public.workspaces;
+create policy "workspaces_delete_admin_or_creator"
+on public.workspaces
+for delete
+to authenticated
+using (public.is_admin_user() or created_by = auth.uid());
+
+drop policy if exists "workspace_members_select" on public.workspace_members;
+create policy "workspace_members_select"
+on public.workspace_members
+for select
+to authenticated
+using (public.is_admin_user() or user_id = auth.uid());
+
+drop policy if exists "workspace_members_insert_admin" on public.workspace_members;
+create policy "workspace_members_insert_admin"
+on public.workspace_members
+for insert
+to authenticated
+with check (public.is_admin_user());
+
+drop policy if exists "workspace_members_delete_admin" on public.workspace_members;
+create policy "workspace_members_delete_admin"
+on public.workspace_members
+for delete
+to authenticated
+using (public.is_admin_user());
+
 drop policy if exists "labels_all_for_approved" on public.labels;
 create policy "labels_all_for_approved"
 on public.labels
