@@ -211,19 +211,35 @@ export function WorkspaceProvider({
       return;
     }
 
-    const { data: deletedRows, error: deleteError } = await supabase
+    const { error: deleteError } = await supabase
       .from("workspaces")
       .delete()
-      .eq("id", workspaceId)
-      .select("id");
+      .eq("id", workspaceId);
 
     if (deleteError) {
-      setError(deleteError.message);
+      const details = [deleteError.message, deleteError.details, deleteError.hint]
+        .filter(Boolean)
+        .join(" | ");
+      setError(details || "Eliminazione workspace non riuscita.");
       return;
     }
 
-    if (!deletedRows || deletedRows.length === 0) {
-      setError("Eliminazione non riuscita: permessi insufficienti o workspace non trovato.");
+    // Verify real persistence: workspace must no longer exist after delete.
+    const { data: afterDelete, error: verifyError } = await supabase
+      .from("workspaces")
+      .select("id")
+      .eq("id", workspaceId)
+      .maybeSingle<{ id: string }>();
+
+    if (verifyError) {
+      setError(verifyError.message);
+      return;
+    }
+
+    if (afterDelete) {
+      setError(
+        "Eliminazione non completata: il workspace risulta ancora presente (possibile blocco permessi o vincoli dati)."
+      );
       return;
     }
 
