@@ -190,7 +190,6 @@ export function WorkspaceProvider({
   }
 
   async function deleteWorkspace(workspaceId: string) {
-    const supabase = createSupabaseBrowserClient();
     const isAdmin =
       profile.is_admin || profile.email === "ludovico.righetto@gmail.com";
     if (!isAdmin) return;
@@ -200,46 +199,13 @@ export function WorkspaceProvider({
     }
 
     setError(null);
-    const { data: targetWorkspace } = await supabase
-      .from("workspaces")
-      .select("id")
-      .eq("id", workspaceId)
-      .maybeSingle<{ id: string }>();
+    const response = await fetch(`/api/workspaces/${workspaceId}`, {
+      method: "DELETE"
+    });
+    const payload = (await response.json().catch(() => ({}))) as { error?: string };
 
-    if (!targetWorkspace) {
-      setError("Workspace non trovato o non accessibile.");
-      return;
-    }
-
-    const { error: deleteError } = await supabase
-      .from("workspaces")
-      .delete()
-      .eq("id", workspaceId);
-
-    if (deleteError) {
-      const details = [deleteError.message, deleteError.details, deleteError.hint]
-        .filter(Boolean)
-        .join(" | ");
-      setError(details || "Eliminazione workspace non riuscita.");
-      return;
-    }
-
-    // Verify real persistence: workspace must no longer exist after delete.
-    const { data: afterDelete, error: verifyError } = await supabase
-      .from("workspaces")
-      .select("id")
-      .eq("id", workspaceId)
-      .maybeSingle<{ id: string }>();
-
-    if (verifyError) {
-      setError(verifyError.message);
-      return;
-    }
-
-    if (afterDelete) {
-      setError(
-        "Eliminazione non completata: il workspace risulta ancora presente (possibile blocco permessi o vincoli dati)."
-      );
+    if (!response.ok) {
+      setError(payload.error || "Eliminazione workspace non riuscita.");
       return;
     }
 
